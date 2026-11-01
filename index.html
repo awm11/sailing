@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="A top-down sailing game with real sail, rudder, wind and balance physics.">
 <title>Close Hauled</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2064%2064%22%3E%3Crect%20width=%2264%22%20height=%2264%22%20rx=%2214%22%20fill=%22%230e4d5f%22/%3E%3Cpath%20d=%22M0%2050q8-5%2016%200t16%200%2016%200%2016%200v14H0z%22%20fill=%22%23082f3d%22/%3E%3Cpath%20d=%22M32%209v33H16z%22%20fill=%22%23f4efe2%22/%3E%3Cpath%20d=%22M35%2017v25h15z%22%20fill=%22%23e8a33d%22/%3E%3Cpath%20d=%22M12%2046h40l-6%208H18z%22%20fill=%22%23f4efe2%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
@@ -127,7 +128,6 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 .table .tm{font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums}
 .results{display:grid;grid-template-columns:1fr auto;gap:6px 20px;font-size:15px}
 .results .v{font-family:var(--mono);font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
-.results .total{font-size:20px;color:var(--mark)}
 
 /* ---------- touch ---------- */
 #touch{display:none}
@@ -189,7 +189,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
       <div class="bar"><span class="lbl">Rudder</span><div class="track center"><div class="fill" id="bRudder"></div></div><span class="num" id="rRudder">0°</span></div>
       <div class="bar"><span class="lbl">Heel</span><div class="track center heel"><div class="fill" id="bHeel"></div></div><span class="num" id="rHeel">0°</span></div>
       <div class="bar"><span class="lbl">Crew</span><div class="track center crew"><div class="fill" id="bCrew"></div></div><span class="num" id="rCrew">mid</span></div>
-      <div class="keys"><kbd>←</kbd><kbd>→</kbd> steer · <kbd>↑</kbd><kbd>↓</kbd> sail in / out · <kbd>Q</kbd><kbd>E</kbd> or two-finger swipe: lean · <kbd>Space</kbd> right a capsize · <kbd>T</kbd> auto-trim <span id="autoTag"></span> · <kbd>P</kbd> pause</div>
+      <div class="keys"><kbd>←</kbd><kbd>→</kbd> steer · <kbd>↑</kbd><kbd>↓</kbd> sail in / out · <kbd>Q</kbd><kbd>E</kbd> or two-finger swipe: lean · <kbd>Space</kbd> right a capsize · <kbd>T</kbd> auto-trim <span id="autoTag"></span> · <kbd>N</kbd> sound · <kbd>P</kbd> pause</div>
     </section>
   </div>
 </div>
@@ -224,6 +224,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
           <span><kbd>Q</kbd> <kbd>E</kbd></span><span>Lean your weight to the boat's left / right. A two-finger sideways swipe on a touchpad does the same (<kbd>I</kbd> reverses it)</span>
           <span><kbd>Space</kbd></span><span>Hold to pull the boat upright after a capsize</span>
           <span><kbd>T</kbd></span><span>Auto-trim the sail while you learn to steer</span>
+          <span><kbd>N</kbd></span><span>Sound on / off</span>
           <span><kbd>H</kbd> <kbd>P</kbd> <kbd>R</kbd> <kbd>M</kbd></span><span>Tips · pause · restart · menu</span>
         </div>
       </div>
@@ -241,6 +242,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
       <span><kbd>I</kbd></span><span>Reverse the swipe direction</span>
       <span><kbd>Space</kbd></span><span>Hold to right a capsized boat</span>
       <span><kbd>T</kbd></span><span>Auto-trim on / off</span>
+      <span><kbd>N</kbd></span><span>Sound on / off</span>
       <span><kbd>H</kbd></span><span>Coaching tips on / off</span>
       <span><kbd>R</kbd></span><span>Restart this mode</span>
       <span><kbd>M</kbd></span><span>Back to menu</span>
@@ -272,6 +274,15 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 <script>
 (function(){
 "use strict";
+// Close Hauled: a top-down sailing game.
+// Sections: utilities · sailing physics · course · difficulty · game state · wind · menus & input ·
+// player simulation · capsizing · racing · computer boats & right of way · open-water drills ·
+// rendering (water, projection, sea bed, scenery, course, boats, sailors) · overlays · instruments · main loop.
+// World units are pixels (12 px/s = 1 knot, 10 px = 1 m). Heading 0 = north (up), clockwise positive.
+
+// ════════════════════════════════════════════════════════════════════
+// UTILITIES
+// ════════════════════════════════════════════════════════════════════
 const TAU=Math.PI*2, D=180/Math.PI;
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const wrap=a=>{a%=TAU;if(a>Math.PI)a-=TAU;if(a<-Math.PI)a+=TAU;return a;};
@@ -280,6 +291,9 @@ function hash(i,j){const h=Math.sin(i*127.1+j*311.7)*43758.5453;return h-Math.fl
 function hash2(i,j){const h=Math.sin(i*269.5+j*183.3)*15731.743;return h-Math.floor(h);}
 const PX_PER_KN=12, PX_PER_M=10;
 
+// ════════════════════════════════════════════════════════════════════
+// SAILING PHYSICS
+// ════════════════════════════════════════════════════════════════════
 // PHYSICS-START
 // Units: px and seconds. Heading 0 = north (screen up), clockwise positive.
 const K={sail:0.0024,drag:0.0017,lin:0.012,lat:3.2,side:0.10,windage:0.0001,rud:0.35,turn:0.016,turnBase:0.18,sheetMin:0.08,sheetMax:1.5,
@@ -333,7 +347,9 @@ function stepHeel(b,F,dt){
 }
 // PHYSICS-END
 
-// ---------- course ----------
+// ════════════════════════════════════════════════════════════════════
+// COURSE
+// ════════════════════════════════════════════════════════════════════
 const LINE={x1:-260,x2:260,y:0};
 // Marks are rounded to port (kept on your left), so the course runs anticlockwise:
 // start -> windward (upwind) -> wing (reach, to the west) -> leeward (reach) -> finish (upwind).
@@ -379,7 +395,9 @@ function openObstacles(){
   return out;
 }
 
-// ---------- difficulty ----------
+// ════════════════════════════════════════════════════════════════════
+// DIFFICULTY
+// ════════════════════════════════════════════════════════════════════
 // spd: wind strength range (px/s; 12 px/s = 1 knot) · shift: size of a persistent wind shift (rad)
 // every: seconds between shifts · lim: furthest the wind wanders from its average · gust: extra strength in a gust
 const LEVELS={
@@ -395,11 +413,13 @@ let levelKey="moderate";
 try{const v=localStorage.getItem("closeHauledLevel");if(LEVELS[v])levelKey=v;}catch(e){}
 const LV=()=>LEVELS[levelKey];
 
-// ---------- state ----------
+// ════════════════════════════════════════════════════════════════════
+// GAME STATE AND MODES
+// ════════════════════════════════════════════════════════════════════
 const S={mode:"menu",paused:false,t:0,zoom:1,cam:{x:0,y:200},wind:{base:0,from:0,speed:110},gusts:[],trail:[],trailT:0,
   obstacles:[],boat:null,F:null,tips:true,auto:false,side:0,hitCd:0,race:null,open:null,lastTwa:0,ws:null,invert:false,shift:0,fx:[]};
 try{S.invert=localStorage.getItem("closeHauledInvert")==="1";}catch(e){}
-function newBoat(x,y,h){return {x,y,h,u:0,v:0,rudder:0,sheet:0.7,boomDraw:0.4,heel:0,hv:0,crew:0,capsized:false,rightT:0};}
+function newBoat(x,y,h){return {x,y,h,u:0,v:0,rudder:0,sheet:0.7,boomDraw:0.4,heel:0,hv:0,crew:0,capsized:false};}
 
 const DRILLS=[
   {id:"move",text:"Get moving: reach 3 knots"},
@@ -438,7 +458,10 @@ function startMode(mode){
   cv.focus();
 }
 
-// ---------- wind ----------
+
+// ════════════════════════════════════════════════════════════════════
+// WIND
+// ════════════════════════════════════════════════════════════════════
 function initGusts(){
   S.gusts=[];
   const n=S.mode==="menu"?6:LV().nG;
@@ -491,7 +514,36 @@ function windAt(x,y){
   return {from:S.wind.from,speed:S.wind.speed*(1+k),gust:k};
 }
 
-// ---------- input ----------
+
+// ════════════════════════════════════════════════════════════════════
+// MENUS, MESSAGES AND INPUT
+// ════════════════════════════════════════════════════════════════════
+const $=id=>document.getElementById(id);
+function show(id,v){$(id).hidden=!v;}
+const finishOpen=()=>!$("finish").hidden;
+function togglePause(){S.paused=!S.paused;show("pause",S.paused);if(!S.paused)cv.focus();}
+function toMenu(){S.mode="menu";S.paused=false;show("pause",false);show("finish",false);show("hud",false);show("menu",true);$("goOpen").focus();}
+function setLevel(k){
+  levelKey=k;try{localStorage.setItem("closeHauledLevel",k);}catch(e){}
+  document.querySelectorAll(".lvl").forEach(b=>b.setAttribute("aria-pressed",b.dataset.l===k?"true":"false"));
+  $("lvlDesc").textContent=LEVELS[k].desc;
+}
+document.querySelectorAll(".lvl").forEach(b=>b.onclick=()=>setLevel(b.dataset.l));
+setLevel(levelKey);
+$("goOpen").onclick=()=>startMode("open");
+$("goRace").onclick=()=>startMode("race");
+$("resume").onclick=togglePause;
+$("toMenu1").onclick=toMenu;$("toMenu2").onclick=toMenu;
+$("again").onclick=()=>startMode("race");
+function toast(text,cls){
+  if(S.silent)return;
+  const el=document.createElement("div");el.className="toast "+(cls||"");el.textContent=text;
+  $("toasts").appendChild(el);
+  while($("toasts").children.length>3)$("toasts").firstChild.remove();
+  setTimeout(()=>{el.style.opacity="0";el.style.transform="translateY(-8px)";},1700);
+  setTimeout(()=>el.remove(),2300);
+}
+
 const keys=new Set(), touchHeld=new Set();
 const MAP={left:["ArrowLeft","KeyA"],right:["ArrowRight","KeyD"],in:["ArrowUp","KeyW"],out:["ArrowDown","KeyS"],leanL:["KeyQ"],leanR:["KeyE"],up:["Space"]};
 const held=k=>touchHeld.has(k)||MAP[k].some(c=>keys.has(c));
@@ -503,6 +555,7 @@ window.addEventListener("keydown",e=>{
   if(S.mode==="menu"){
     if(c==="Digit1"||c==="Numpad1")startMode("open");
     if(c==="Digit2"||c==="Numpad2")startMode("race");
+    if(c==="KeyN"){Snd.on=!Snd.on;try{localStorage.setItem("closeHauledSound",Snd.on?"1":"0");}catch(e){}}
     if(c==="ArrowLeft"||c==="ArrowRight"){const i=LEVEL_KEYS.indexOf(levelKey)+(c==="ArrowRight"?1:-1);setLevel(LEVEL_KEYS[clamp(i,0,2)]);}
     return;
   }
@@ -511,6 +564,7 @@ window.addEventListener("keydown",e=>{
   else if(c==="KeyM")toMenu();
   else if(c==="KeyT"&&!S.paused){S.auto=!S.auto;toast(S.auto?"Auto-trim on":"Auto-trim off","");}
   else if(c==="KeyI"){S.invert=!S.invert;try{localStorage.setItem("closeHauledInvert",S.invert?"1":"0");}catch(e){}toast(S.invert?"Swipe reversed":"Swipe normal","");}
+  else if(c==="KeyN"){Snd.on=!Snd.on;try{localStorage.setItem("closeHauledSound",Snd.on?"1":"0");}catch(e){}toast(Snd.on?"Sound on":"Sound off","");}
   else if(c==="KeyH"){S.tips=!S.tips;document.getElementById("tipPanel").style.visibility=S.tips?"visible":"hidden";}
 });
 window.addEventListener("keyup",e=>keys.delete(e.code));
@@ -532,35 +586,110 @@ document.querySelectorAll("#touch button").forEach(btn=>{
   btn.addEventListener("pointerdown",on);btn.addEventListener("pointerup",off);
   btn.addEventListener("pointercancel",off);btn.addEventListener("pointerleave",off);
 });
-const $=id=>document.getElementById(id);
-function show(id,v){$(id).hidden=!v;}
-const finishOpen=()=>!$("finish").hidden;
-function togglePause(){S.paused=!S.paused;show("pause",S.paused);if(!S.paused)cv.focus();}
-function toMenu(){S.mode="menu";S.paused=false;show("pause",false);show("finish",false);show("hud",false);show("menu",true);$("goOpen").focus();}
-function setLevel(k){
-  levelKey=k;try{localStorage.setItem("closeHauledLevel",k);}catch(e){}
-  document.querySelectorAll(".lvl").forEach(b=>b.setAttribute("aria-pressed",b.dataset.l===k?"true":"false"));
-  $("lvlDesc").textContent=LEVELS[k].desc;
-}
-document.querySelectorAll(".lvl").forEach(b=>b.onclick=()=>setLevel(b.dataset.l));
-setLevel(levelKey);
-$("goOpen").onclick=()=>startMode("open");
-$("goRace").onclick=()=>startMode("race");
-$("resume").onclick=togglePause;
-$("toMenu1").onclick=toMenu;$("toMenu2").onclick=toMenu;
-$("again").onclick=()=>startMode("race");
 
-// ---------- toasts ----------
-function toast(text,cls){
-  if(S.silent)return;
-  const el=document.createElement("div");el.className="toast "+(cls||"");el.textContent=text;
-  $("toasts").appendChild(el);
-  while($("toasts").children.length>3)$("toasts").firstChild.remove();
-  setTimeout(()=>{el.style.opacity="0";el.style.transform="translateY(-8px)";},1700);
-  setTimeout(()=>el.remove(),2300);
+// ════════════════════════════════════════════════════════════════════
+// SOUND
+// ════════════════════════════════════════════════════════════════════
+// Everything is synthesised with the Web Audio API, so there are no sound files to load.
+// Continuous layers (wind, water, flapping sail) follow the player's boat; one-off effects mark events.
+// Browsers only allow audio after the player presses a key or clicks, so it starts on the first one.
+const Snd={c:null,on:true};
+try{Snd.on=localStorage.getItem("closeHauledSound")!=="0";}catch(e){}
+function sndInit(){
+  if(Snd.c){if(Snd.c.state==="suspended")Snd.c.resume();return;}
+  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+  try{
+    const c=new AC();Snd.c=c;
+    const mk=(fill)=>{const b=c.createBuffer(1,c.sampleRate*2,c.sampleRate),d=b.getChannelData(0);fill(d);return b;};
+    Snd.white=mk(d=>{for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;});
+    Snd.brown=mk(d=>{let v=0;for(let i=0;i<d.length;i++){v=(v+0.02*(Math.random()*2-1))/1.02;d[i]=v*3.5;}});
+    const comp=c.createDynamicsCompressor();comp.connect(c.destination);
+    Snd.master=c.createGain();Snd.master.gain.value=0;Snd.master.connect(comp);
+    const loop=(buf,filt,f,q)=>{const s=c.createBufferSource();s.buffer=buf;s.loop=true;
+      const fl=c.createBiquadFilter();fl.type=filt;fl.frequency.value=f;fl.Q.value=q;
+      const g=c.createGain();g.gain.value=0;s.connect(fl);fl.connect(g);g.connect(Snd.master);s.start();return {fl,g};};
+    Snd.wind=loop(Snd.white,"bandpass",500,0.6);
+    Snd.whistle=loop(Snd.white,"bandpass",1700,9);
+    Snd.water=loop(Snd.brown,"lowpass",400,0.7);
+    Snd.luff=loop(Snd.white,"bandpass",1100,0.9);
+    // the flapping sail: a square-wave wobble on the luff layer's volume
+    Snd.lfo=c.createOscillator();Snd.lfo.type="square";Snd.lfo.frequency.value=10;
+    Snd.lfoAmt=c.createGain();Snd.lfoAmt.gain.value=0;Snd.lfo.connect(Snd.lfoAmt);Snd.lfoAmt.connect(Snd.luff.g.gain);Snd.lfo.start();
+  }catch(e){Snd.c=null;}
 }
+window.addEventListener("keydown",sndInit,true);
+window.addEventListener("pointerdown",sndInit,true);
+const sndOK=()=>Snd.c&&Snd.on&&!S.silent;
+const glide=(param,v,tc)=>param.setTargetAtTime(v,Snd.c.currentTime,tc);
+// called every frame: wind and water follow the player's boat
+function updateSound(){
+  if(!Snd.c)return;
+  const menu=S.mode==="menu",b=S.boat,F=S.F;
+  glide(Snd.master.gain,!Snd.on||S.paused?0:menu?0.45:0.8,0.25);
+  const aws=menu||!F?S.wind.speed:F.aws, kn=aws/PX_PER_KN, gust=F&&F.gust||0;
+  glide(Snd.wind.g.gain,0.015+0.12*clamp((kn-2)/18,0,1),0.3);
+  glide(Snd.wind.fl.frequency,280+kn*45,0.3);
+  glide(Snd.whistle.g.gain,0.02*clamp((kn-9)/10,0,1)+0.03*gust,0.4);
+  const sp=menu||!b?0:Math.abs(b.u)/PX_PER_KN;
+  const slap=0.02+0.012*Math.sin(S.t*1.3)+0.008*Math.sin(S.t*2.9);
+  glide(Snd.water.g.gain,menu?0.025:b&&b.capsized?0.08:slap+0.16*clamp(sp/9,0,1),0.2);
+  glide(Snd.water.fl.frequency,220+sp*110,0.2);
+  // a sail that is luffing (or head to wind) flaps; louder in more wind
+  const luffing=!menu&&F&&b&&!b.capsized&&(F.alpha<0.04||Math.abs(F.awa)<0.35);
+  const wf=clamp(kn/15,0,1),amt=luffing?0.05+0.11*wf:0;
+  // a quiet rustle underneath, wandering in pitch
+  glide(Snd.luff.g.gain,amt*0.22,0.08);glide(Snd.lfoAmt.gain,0,0.05);
+  if(luffing)glide(Snd.luff.fl.frequency,700+Math.random()*900,0.12);
+  // individual flaps at irregular intervals: quick flurries, short pauses and the odd lull, each one different
+  const now=Snd.c.currentTime;
+  if(!luffing||!Snd.on||S.paused){Snd.nextFlap=0;return;}
+  if(!Snd.nextFlap||Snd.nextFlap<now)Snd.nextFlap=now+0.02;
+  while(Snd.nextFlap<now+0.15){
+    const t=Snd.nextFlap,r=Math.random();
+    flap(t,amt*(0.35+Math.random()*0.9),500+Math.random()*1900,0.02+Math.random()*0.07,Math.random()<0.1);
+    const gap=r<0.68?0.035+Math.random()*0.08:r<0.93?0.14+Math.random()*0.22:0.35+Math.random()*0.4;
+    Snd.nextFlap+=gap*(1.35-0.55*wf);
+  }
+}
+function flap(t,vol,f,dur,crack){
+  const c=Snd.c,s=c.createBufferSource(),fl=c.createBiquadFilter(),g=c.createGain();
+  s.buffer=Snd.white;fl.type=crack?"highpass":"bandpass";fl.frequency.value=crack?2200:f;fl.Q.value=crack?0.5:0.6+Math.random();
+  s.connect(fl);fl.connect(g);g.connect(Snd.master);
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(crack?vol*1.6:vol,t+0.003);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  s.start(t,Math.random()*1.8);s.stop(t+dur+0.02);
+}
+// ---- one-off effects ----
+function env(g,t,a,peak,d){g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+a+d);}
+function tone(freq,dur,type,vol,delay=0,to){
+  if(!sndOK())return;
+  const c=Snd.c,t=c.currentTime+delay,o=c.createOscillator(),g=c.createGain();
+  o.type=type;o.frequency.setValueAtTime(freq,t);if(to)o.frequency.exponentialRampToValueAtTime(to,t+dur);
+  o.connect(g);g.connect(Snd.master);env(g,t,0.008,vol,dur);o.start(t);o.stop(t+dur+0.05);
+}
+function burst(dur,vol,f0,f1,delay=0){
+  if(!sndOK())return;
+  const c=Snd.c,t=c.currentTime+delay,s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();
+  s.buffer=Snd.white;f.type="lowpass";f.frequency.setValueAtTime(f0,t);f.frequency.exponentialRampToValueAtTime(f1,t+dur);
+  s.connect(f);f.connect(g);g.connect(Snd.master);env(g,t,0.01,vol,dur);s.start(t,Math.random());s.stop(t+dur+0.05);
+}
+const sfx={
+  beep:()=>tone(1046,0.13,"sine",0.25),
+  horn:(dur=0.9)=>{if(!sndOK())return;const c=Snd.c,t=c.currentTime,f=c.createBiquadFilter(),g=c.createGain();
+    f.type="lowpass";f.frequency.value=900;f.connect(g);g.connect(Snd.master);
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.22,t+0.05);g.gain.setValueAtTime(0.22,t+dur);g.gain.exponentialRampToValueAtTime(0.0001,t+dur+0.25);
+    for(const fr of [185,233]){const o=c.createOscillator();o.type="sawtooth";o.frequency.value=fr;o.connect(f);o.start(t);o.stop(t+dur+0.3);}},
+  bell:()=>{tone(1568,1.5,"sine",0.22);tone(3136,0.9,"sine",0.06);tone(2349,1.1,"triangle",0.04,0.01);},
+  chime:()=>{tone(1318,0.5,"sine",0.12);tone(1760,0.6,"sine",0.1,0.12);},
+  splash:(k=1)=>{burst(0.35+0.7*k,0.5*k,3000,280);burst(0.25,0.25*k,6000,900,0.04);
+    for(let i=0;i<5*k;i++)tone(380+Math.random()*500,0.07,"sine",0.05,0.15+Math.random()*0.7*k,900+Math.random()*600);},
+  thud:()=>{tone(90,0.32,"sine",0.55,0,42);burst(0.14,0.25,900,180);},
+  boom:()=>{tone(150,0.18,"triangle",0.3,0,70);burst(0.1,0.2,1800,300);},
+  knock:()=>{tone(180,0.12,"square",0.12,0,90);burst(0.08,0.15,1500,300);}
+};
 
-// ---------- simulation ----------
+// ════════════════════════════════════════════════════════════════════
+// PLAYER SIMULATION
+// ════════════════════════════════════════════════════════════════════
 function step(dt){
   S.t+=dt;
   updateWind(dt);
@@ -610,7 +739,7 @@ function step(dt){
     const sd=twa>=0?1:-1;
     if(sd!==S.side){
       const kind=a<Math.PI/2?"tack":"gybe";
-      toast(kind==="tack"?"Tacked":"Gybed!","good");
+      toast(kind==="tack"?"Tacked":"Gybed!","good");if(kind==="gybe")sfx.boom();
       if(S.open)S.open.done[kind]=true;
       S.side=sd;
     }
@@ -622,15 +751,28 @@ function step(dt){
   S.trailT+=dt;
   if(S.trailT>0.08){S.trailT=0;S.trail.push({x:b.x,y:b.y,h:b.h,s:Math.abs(b.u)});if(S.trail.length>450)S.trail.shift();}
 }
+function collide(b,dt){
+  S.hitCd=Math.max(0,S.hitCd-dt);
+  const o=bounceOff(b);
+  if(o&&S.hitCd<=0){
+    S.hitCd=1.2;sfx.thud();
+    const what={rock:"Hit a rock",island:"Ran aground",moored:"Hit a moored boat",committee:"Hit the committee boat",pin:"Hit the pin buoy",mark:"Touched the mark"}[o.kind];
+    if(S.race&&S.race.stage==="racing"&&S.race.started){S.race.pen+=5;toast(what+" +5 s","bad");}
+    else toast(what,"bad");
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// CAPSIZING AND SPLASHES
+// ════════════════════════════════════════════════════════════════════
 // Capsize sequence: falling (boat rolls onto its side) -> over (sailor swims to the centreboard,
 // holding Space levers the boat up) -> popping (the boat springs upright and the sailor climbs in).
 const FLAT=1.5;                                   // lying on its side: ~86 degrees
 function capsize(b){
   const side=b.heel>=0?1:-1;
   b.capsized=true;b.rudder=0;
-  b.cap={phase:"falling",t:0,side,hm:Math.abs(b.heel),hv:Math.max(0.6,b.hv*side),swim:0,lever:0,
-    crew0:b.crew,boom0:b.boomDraw,splashed:false};
-  toast("Capsized!","bad");
+  b.cap={phase:"falling",t:0,side,hm:Math.abs(b.heel),hv:Math.max(0.6,b.hv*side),swim:0,lever:0,crew0:b.crew};
+  toast("Capsized!","bad");sfx.knock();
 }
 function stepCapsized(b,dt){
   const c=b.cap;c.t+=dt;
@@ -645,7 +787,7 @@ function stepCapsized(b,dt){
     c.hm+=c.hv*dt;
     if(c.hm>=FLAT){
       c.hm=FLAT;c.hv=-c.hv*0.25;c.phase="over";c.t=0;
-      splashAlongMast(b,1);
+      splashAlongMast(b,1);sfx.splash(1);
     }
   }else if(c.phase==="over"){
     const pushing=held("up");
@@ -655,7 +797,7 @@ function stepCapsized(b,dt){
     if(pushing&&c.swim>=1){c.hm-=0.36*dt*(0.6+0.4*Math.sin(c.hm));c.hv=0;c.lever=Math.min(1,c.lever+dt*2);}
     else{c.hv+=((target-c.hm)*10-c.hv*4)*dt;c.hm+=c.hv*dt;c.lever=Math.max(0,c.lever-dt*2);}
     if(c.swim>=1&&Math.random()<dt*2)S.fx.push({k:"ring",x:boardTip(b).x,y:boardTip(b).y,r:4,life:1});
-    if(c.hm<0.95){c.phase="popping";c.t=0;c.hv=-2.4;}
+    if(c.hm<0.95){c.phase="popping";c.t=0;c.hv=-2.4;sfx.splash(0.55);}
   }else if(c.phase==="popping"){
     // springs up past upright, rocks, and settles; water pours off the sail
     c.hv+=(-14*c.hm-3.2*c.hv)*dt;c.hm+=c.hv*dt;
@@ -703,22 +845,15 @@ function drawFx(kind){
     else{const q=toView(f);ctx.fillStyle="rgba(235,248,246,0.85)";ctx.beginPath();ctx.arc(q[0],q[1],1.4,0,TAU);ctx.fill();}
   }
 }
-function collide(b,dt){
-  S.hitCd=Math.max(0,S.hitCd-dt);
-  const o=bounceOff(b);
-  if(o&&S.hitCd<=0){
-    S.hitCd=1.2;
-    const what={rock:"Hit a rock",island:"Ran aground",moored:"Hit a moored boat",committee:"Hit the committee boat",pin:"Hit the pin buoy",mark:"Touched the mark"}[o.kind];
-    if(S.race&&S.race.stage==="racing"&&S.race.started){S.race.pen+=5;toast(what+" +5 s","bad");}
-    else toast(what,"bad");
-  }
-}
+
+// ════════════════════════════════════════════════════════════════════
+// RACING
+// ════════════════════════════════════════════════════════════════════
 function crossedLine(px,py,x,y){
   if(!(py>LINE.y&&y<=LINE.y))return false;
   const ix=px+(x-px)*((py-LINE.y)/(py-y));
   return ix>LINE.x1&&ix<LINE.x2;
 }
-// ================= RACING =================
 const COUNTDOWN=40;                                   // seconds from the warning to the start gun
 function newRacerState(){return {next:0,lastA:null,lastP:null,warned:false,started:false,ocs:false,finished:false,finishT:0,pen:0,startLate:0};}
 // race clock: countdown signals, then the gun
@@ -728,6 +863,7 @@ function stepRaceClock(){
   const rem=r.gun-S.t;
   while(r.signals.length&&rem<=r.signals[0]){
     const sgl=r.signals.shift();
+    if(sgl===0)sfx.horn(1.4);else if(sgl>=10)sfx.horn(0.4);else sfx.beep();
     if(sgl===0){
       r.stage="racing";toast("GO!","mark");
       if(S.boat.y<LINE.y&&!r.started)toast("You're on the wrong side of the line: go back and cross it","bad");
@@ -771,7 +907,7 @@ function trackRacer(rs,b,px,py,me){
       const rel=wrap(Math.atan2(dy,dx)-m.gate);
       if(rs.lastA!==null&&Math.abs(rel)<1.2&&Math.abs(rs.lastA)<1.2){
         if(rs.lastA>0&&rel<=0){
-          say("Mark "+(rs.next+1)+" rounded","mark");
+          say("Mark "+(rs.next+1)+" rounded","mark");if(me)sfx.bell();
           rs.next++;rs.lastA=null;rs.lastP=rel;rs.warned=false;
           if(me&&rs.next===MARKS.length)setTimeout(()=>toast("Now cross the finish line going upwind","mark"),900);
           return;
@@ -807,6 +943,7 @@ function fmt(t){const m=Math.floor(t/60),s=t-m*60;return m+":"+(s<10?"0":"")+s.t
 function finishRace(){
   const r=S.race;
   r.finishT=r.time+r.pen;
+  sfx.horn(0.7);setTimeout(sfx.bell,700);
   // let the computer boats sail on (quickly, off screen) until they finish too
   S.silent=true;
   const dt=1/30;
@@ -829,11 +966,14 @@ function finishRace(){
   show("finish",true);$("again").focus();
 }
 
-// ================= COMPUTER BOATS =================
+
+// ════════════════════════════════════════════════════════════════════
+// COMPUTER BOATS AND RIGHT OF WAY
+// ════════════════════════════════════════════════════════════════════
 const AI_CREW=[
-  {name:"Blue",  look:{stripe:"#3f8ef0",sail:"rgba(208,228,255,0.93)",shirt:"#2a64c8"},skill:0.93,lineX:-170,x:-40, y:340,h:Math.PI/2},
-  {name:"Green", look:{stripe:"#3cc483",sail:"rgba(214,246,228,0.93)",shirt:"#1f9a60"},skill:0.955,lineX:20, y:300,x:110, h:-Math.PI/2},
-  {name:"Purple",look:{stripe:"#b07cf2",sail:"rgba(236,224,255,0.93)",shirt:"#7a4cc4"},skill:0.975,lineX:170,x:240,y:380,h:-Math.PI/2}
+  {name:"Blue Bosun",  look:{stripe:"#3f8ef0",sail:"rgba(208,228,255,0.93)",shirt:"#2a64c8"},skill:0.88,lineX:-170,x:-40, y:340,h:Math.PI/2},
+  {name:"Green Galleon", look:{stripe:"#3cc483",sail:"rgba(214,246,228,0.93)",shirt:"#1f9a60"},skill:0.955,lineX:20, y:300,x:110, h:-Math.PI/2},
+  {name:"Purple Puffin",look:{stripe:"#b07cf2",sail:"rgba(236,224,255,0.93)",shirt:"#7a4cc4"},skill:0.975,lineX:170,x:240,y:380,h:-Math.PI/2}
 ];
 function makeAI(c){
   const b=newBoat(c.x,c.y,c.h);b.u=18;b.look=c.look;
@@ -992,20 +1132,24 @@ function boatEncounters(dt){
       A.b.x-=nx*push;A.b.y-=ny*push;B.b.x+=nx*push;B.b.y+=ny*push;A.b.u*=0.6;B.b.u*=0.6;
       const key=A.name+B.name;S.fouls=S.fouls||{};
       if(S.race.stage==="racing"&&(A.me||B.me)&&(!S.fouls[key]||S.t-S.fouls[key]>4)){
-        S.fouls[key]=S.t;giver.rs.pen+=10;
+        S.fouls[key]=S.t;giver.rs.pen+=10;sfx.thud();
         if(giver.me)toast("Foul! "+row.why[0].toUpperCase()+row.why.slice(1)+". +10 s","bad");
         else if(stander.me)toast(giver.name+" fouled you and takes a 10 s penalty","good");
       }
     }
   }
 }
+
+// ════════════════════════════════════════════════════════════════════
+// OPEN-WATER DRILLS
+// ════════════════════════════════════════════════════════════════════
 function stepOpen(b,dt,px,py){
   const o=S.open;
   o.dist+=Math.hypot(b.x-px,b.y-py);
   const kn=b.u/PX_PER_KN;
   o.top=Math.max(o.top,kn);
   const twa=Math.abs(wrap(S.wind.from-b.h))*D;
-  const done=id=>{if(!o.done[id]){o.done[id]=true;toast("Drill complete","good");}};
+  const done=id=>{if(!o.done[id]){o.done[id]=true;toast("Drill complete","good");sfx.chime();}};
   if(kn>=3)done("move");
   if(twa>80&&twa<105&&kn>=6)done("beam");
   if(twa>=38&&twa<60&&kn>=3){o.closeT+=dt;if(o.closeT>=5)done("close");}else o.closeT=0;
@@ -1013,7 +1157,10 @@ function stepOpen(b,dt,px,py){
   if(S.F&&S.F.tws/PX_PER_KN>=12&&Math.abs(b.heel)<0.22&&kn>=4){o.flatT=(o.flatT||0)+dt;if(o.flatT>=4)done("hike");}else o.flatT=0;
 }
 
-// ---------- rendering ----------
+
+// ════════════════════════════════════════════════════════════════════
+// RENDERING: CANVAS AND WATER
+// ════════════════════════════════════════════════════════════════════
 const cv=$("sea"),ctx=cv.getContext("2d");
 let W=0,H=0,DPR=1;
 function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);}
@@ -1063,26 +1210,16 @@ function drawWater(){
   }
   ctx.globalAlpha=1;
 }
-function rockPath(o){
-  ctx.beginPath();
-  const n=9;
-  for(let k=0;k<=n;k++){
-    const a=k/n*TAU,rr=o.r*(0.78+0.3*hash(o.seed,k%n));
-    const x=o.x+Math.cos(a)*rr,y=o.y+Math.sin(a)*rr;
-    k?ctx.lineTo(x,y):ctx.moveTo(x,y);
-  }
-  ctx.closePath();
-}
-function drawHull(L,Wd){
-  ctx.beginPath();
-  ctx.moveTo(0,-L/2);
-  ctx.bezierCurveTo(Wd*0.45,-L*0.35,Wd*0.55,-L*0.05,Wd*0.5,L*0.18);
-  ctx.lineTo(Wd*0.38,L/2);ctx.lineTo(-Wd*0.38,L/2);ctx.lineTo(-Wd*0.5,L*0.18);
-  ctx.bezierCurveTo(-Wd*0.55,-L*0.05,-Wd*0.45,-L*0.35,0,-L/2);
-  ctx.closePath();
-}
-// ---------- 3D scenery ----------
-// Same oblique camera as the boats: height shifts things up-screen, the sun casts shadows down-right.
+
+// ════════════════════════════════════════════════════════════════════
+// RENDERING: 3D PROJECTION HELPERS
+// ════════════════════════════════════════════════════════════════════
+// The camera looks down at a slight angle, so height (z) shows as a shift up-screen,
+// and the sun casts shadows down-right. Points are {x,y,z} in world pixels.
+const VIEW={x:0.2,y:-0.72}, SUN={x:0.55,y:0.5};
+const toView=p=>[p.x+p.z*VIEW.x,p.y+p.z*VIEW.y];
+const toShadow=p=>[p.x+Math.max(0,p.z)*SUN.x,p.y+Math.max(0,p.z)*SUN.y];
+function poly(pts,proj){ctx.beginPath();pts.forEach((p,i)=>{const q=proj(p);i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});ctx.closePath();}
 const unit3=v=>{const l=Math.hypot(v[0],v[1],v[2])||1;return [v[0]/l,v[1]/l,v[2]/l];};
 const CAMV=unit3([-0.2,0.72,1]), LIGHTV=unit3([-0.55,-0.5,1]);
 const dot3=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
@@ -1100,12 +1237,138 @@ function hull2(pts){ // convex hull of [x,y] points
   for(let i=pts.length-1;i>=0;i--){const p=pts[i];while(up.length>=2&&cr(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p);}
   return lo.slice(0,-1).concat(up.slice(0,-1));
 }
+const rgb=(c,k)=>"rgb("+c.map(v=>Math.round(clamp(v*k,0,255))).join(",")+")";
+const lerp3=(p,q,t)=>({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t,z:p.z+(q.z-p.z)*t});
+const limb=(p0,p1,w,c)=>{const q0=toView(p0),q1=toView(p1);ctx.strokeStyle=c;ctx.lineWidth=w;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(q0[0],q0[1]);ctx.lineTo(q1[0],q1[1]);ctx.stroke();};
+// Part of a polygon that is under the water (z<0): drawn over with sea colour, with foam on the waterline.
+function submerge(pts){
+  const out=[];
+  for(let i=0;i<pts.length;i++){
+    const p=pts[i],q=pts[(i+1)%pts.length],pin=p.z<0,qin=q.z<0;
+    if(pin)out.push(p);
+    if(pin!==qin){const t=p.z/(p.z-q.z);out.push({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t,z:0,wl:true});}
+  }
+  if(out.length<3)return;
+  ctx.fillStyle="rgba(12,70,88,0.86)";poly(out,toView);ctx.fill();
+  const wl=out.filter(p=>p.wl);
+  if(wl.length===2){const a=toView(wl[0]),c=toView(wl[1]);ctx.strokeStyle="rgba(235,248,246,0.55)";ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(c[0],c[1]);ctx.stroke();}
+}
+
+// ════════════════════════════════════════════════════════════════════
+// RENDERING: SEA BED LANDMARKS AND SEAWEED
+// ════════════════════════════════════════════════════════════════════
+// Things fixed to the sea bed: chart grid, lobster-pot floats and kelp beds.
+// Waves drift with the wind, so these are what show the boat's real motion.
+function drawFixedRefs(){
+  const z=S.zoom,vw=W/z,vh=H/z,x0=S.cam.x-vw/2-60,y0=S.cam.y-vh/2-60,x1=x0+vw+120,y1=y0+vh+120;
+  // chart grid, 100 m squares
+  const G=1000;
+  ctx.strokeStyle="rgba(200,236,236,0.10)";ctx.lineWidth=1.5/z;ctx.setLineDash([2/z,10/z]);
+  ctx.beginPath();
+  for(let x=Math.floor(x0/G)*G;x<=x1;x+=G){ctx.moveTo(x,y0);ctx.lineTo(x,y1);}
+  for(let y=Math.floor(y0/G)*G;y<=y1;y+=G){ctx.moveTo(x0,y);ctx.lineTo(x1,y);}
+  ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle="rgba(200,236,236,0.28)";ctx.font="500 11px 'JetBrains Mono',monospace";ctx.textAlign="left";ctx.textBaseline="top";
+  for(let x=Math.floor(x0/G)*G;x<=x1;x+=G)for(let y=Math.floor(y0/G)*G;y<=y1;y+=G){
+    ctx.fillRect(x-5,y-0.75,10,1.5);ctx.fillRect(x-0.75,y-5,1.5,10);
+    const gx=x/G,gy=-y/G;
+    ctx.fillText((gy>=0?"N":"S")+Math.abs(gy)+" "+(gx>=0?"E":"W")+Math.abs(gx),x+6,y+5);
+  }
+  // kelp beds
+  const KC=KELP_CELL;
+  for(let i=Math.floor(x0/KC)-1;i<=Math.ceil(x1/KC);i++)for(let j=Math.floor(y0/KC)-1;j<=Math.ceil(y1/KC);j++){
+    const bd=kelpBed(i,j);if(bd)drawKelpBed(bd.cx,bd.cy,bd.seed);
+  }
+  // lobster-pot floats: bob in place, never drift
+  const PC=340,cols=["#ff5a4f","#ffd447","#f4f1e8","#4fc3ff"];
+  for(let i=Math.floor(x0/PC);i<=Math.ceil(x1/PC);i++)for(let j=Math.floor(y0/PC);j<=Math.ceil(y1/PC);j++){
+    if(hash(i+50,j+70)>0.3)continue;
+    const x=i*PC+hash(i+5,j)*PC*0.8,y=j*PC+hash2(i,j+5)*PC*0.8;
+    const ph=S.t*2+hash(i,j)*TAU,ring=7+3*Math.sin(ph),bz=1.5+0.8*Math.sin(ph),col=cols[Math.floor(hash2(i+1,j+1)*4)];
+    ctx.strokeStyle="rgba(230,245,242,0.30)";ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(x,y,ring,0,TAU);ctx.stroke();
+    // shadow of the ball and its marker stick
+    ctx.fillStyle="rgba(0,10,20,0.28)";ctx.beginPath();ctx.arc(x+SUN.x*3,y+SUN.y*3,4.5,0,TAU);ctx.fill();
+    ctx.strokeStyle="rgba(0,10,20,0.28)";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+SUN.x*15,y+SUN.y*15);ctx.stroke();
+    limb({x,y,z:bz},{x,y,z:bz+14},1.5,"#2a3236");
+    const fp=toView({x,y,z:bz+14});ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(fp[0],fp[1]);ctx.lineTo(fp[0]+6,fp[1]+2);ctx.lineTo(fp[0],fp[1]+4.5);ctx.closePath();ctx.fill();
+    const bp=toView({x,y,z:bz});ctx.fillStyle=col;ctx.beginPath();ctx.arc(bp[0],bp[1],4.5,0,TAU);ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.4)";ctx.beginPath();ctx.arc(bp[0]-1.5,bp[1]-1.5,1.5,0,TAU);ctx.fill();
+  }
+}
+// Kelp beds live on a fixed grid of cells; ~35% of cells hold one.
+const KELP_CELL=700;
+function kelpBed(i,j){
+  if(hash(i+300,j+11)>0.35)return null;
+  const cx=i*KELP_CELL+hash(i,j+40)*KELP_CELL,cy=j*KELP_CELL+hash2(i+8,j)*KELP_CELL,seed=i*31+j*17;
+  const flow=hash(seed,1)*TAU;
+  // the fronds stream downstream from the plants, so the thick part sits a little downstream of the centre
+  const mx=cx+Math.cos(flow)*35,my=cy+Math.sin(flow)*35;
+  if(Math.hypot(mx,my-150)<480)return null;   // keep the starting area clear
+  return {cx,cy,seed,mx,my};
+}
+// 0 = clear water, 1 = right in the thick of a bed
+function kelpAt(x,y){
+  const i0=Math.floor(x/KELP_CELL),j0=Math.floor(y/KELP_CELL);let k=0;
+  for(let i=i0-1;i<=i0+1;i++)for(let j=j0-1;j<=j0+1;j++){
+    const bd=kelpBed(i,j);if(!bd)continue;
+    const d=Math.hypot(x-bd.mx,y-bd.my)/110;
+    if(d<1)k=Math.max(k,Math.min(1,(1-d)*1.8));
+  }
+  return k;
+}
+// A kelp bed: plants anchored to the sea bed, their long fronds floating up and lying along the
+// surface, all streaming the same way in the tidal current and swaying slightly.
+function drawKelpBed(cx,cy,seed){
+  const flow=hash(seed,1)*TAU, fx=Math.cos(flow), fy=Math.sin(flow), nx=-fy, ny=fx;
+  // murky underwater shadow of the bed
+  const g=ctx.createRadialGradient(cx,cy,0,cx,cy,110);
+  g.addColorStop(0,"rgba(40,52,20,0.32)");g.addColorStop(1,"rgba(40,52,20,0)");
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,110,0,TAU);ctx.fill();
+  const plants=6+Math.floor(hash(seed,2)*4);
+  ctx.lineCap="round";ctx.lineJoin="round";
+  for(let p=0;p<plants;p++){
+    const hx=cx+(hash(seed+p,3)-0.5)*130-fx*40, hy=cy+(hash2(seed,p+4)-0.5)*100-fy*40;
+    const fronds=3+Math.floor(hash(seed+p,5)*3);
+    for(let f=0;f<fronds;f++){
+      const len=70+hash(seed+p*7,f+6)*80, spread=(hash2(seed+p,f+7)-0.5)*0.7, ph=hash(seed+p,f+8)*TAU;
+      const dx=Math.cos(flow+spread), dy=Math.sin(flow+spread);
+      const pts=[];
+      const n=9;
+      for(let k=0;k<=n;k++){
+        const t=k/n, w=Math.sin(t*5+S.t*1.3+ph)*6*t+Math.sin(S.t*0.6+ph)*4*t*t;
+        pts.push([hx+dx*len*t+nx*w, hy+dy*len*t+ny*w]);
+      }
+      // stipe (stem): thin and dark where it rises from deeper water
+      ctx.strokeStyle="rgba(78,66,24,0.55)";ctx.lineWidth=2.2;
+      ctx.beginPath();pts.forEach((q,k)=>k?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.stroke();
+      // blades: long ribbon leaves trailing off the stem
+      for(let k=3;k<n;k+=1){
+        const q=pts[k], r=pts[k+1], ax=r[0]-q[0], ay=r[1]-q[1], al=Math.hypot(ax,ay)||1;
+        const side=(k%2?1:-1), bl=10+6*hash(seed+k,f), sway=Math.sin(S.t*1.7+ph+k)*0.25;
+        const ang=Math.atan2(ay,ax)+side*(0.5+sway);
+        ctx.fillStyle="rgba(160,126,44,0.62)";
+        ctx.beginPath();ctx.ellipse(q[0]+Math.cos(ang)*bl*0.5,q[1]+Math.sin(ang)*bl*0.5,bl*0.55,2.2,ang,0,TAU);ctx.fill();
+      }
+      // gas bladders that keep the fronds floating
+      for(let k=2;k<n;k+=3){
+        const q=pts[k];
+        ctx.fillStyle="rgba(196,160,64,0.85)";ctx.beginPath();ctx.arc(q[0],q[1],2.1,0,TAU);ctx.fill();
+      }
+      // frond tip lying on the surface
+      const tq=pts[n];
+      ctx.fillStyle="rgba(176,140,52,0.7)";ctx.beginPath();ctx.ellipse(tq[0],tq[1],6,2.4,Math.atan2(dy,dx),0,TAU);ctx.fill();
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// RENDERING: 3D SCENERY
+// ════════════════════════════════════════════════════════════════════
 function rockPts(x,y,r,seed,n=9){
   const pts=[];
   for(let k=0;k<n;k++){const a=k/n*TAU,rr=r*(0.82+0.24*hash(seed,k));pts.push({x:x+Math.cos(a)*rr,y:y+Math.sin(a)*rr});}
   return pts;
 }
-const rgb=(c,k)=>"rgb("+c.map(v=>Math.round(clamp(v*k,0,255))).join(",")+")";
 // an extruded, tapering block: sides facing the camera are shaded by the sun, then the top
 function drawPrism(base,cx,cy,z0,h,taper,side,top,shadow=true){
   const bot=base.map(p=>({x:p.x,y:p.y,z:z0}));
@@ -1219,6 +1482,10 @@ function drawScene(){
   items.sort((a,b)=>a.y-b.y).forEach(it=>it.draw());
   for(const it of items)if(it.tag)drawNameTag(it.tag);
 }
+
+// ════════════════════════════════════════════════════════════════════
+// RENDERING: COURSE MARKINGS
+// ════════════════════════════════════════════════════════════════════
 function drawCourse(){
   const r=S.race;
   // start / finish line
@@ -1263,109 +1530,10 @@ function drawRoundingGuide(m){
   ctx.strokeText(m.name.toUpperCase(),lx,ly-9);ctx.strokeText("keep it on your left",lx,ly+9);
   ctx.fillStyle="#ffd447";ctx.fillText(m.name.toUpperCase(),lx,ly-9);ctx.fillText("keep it on your left",lx,ly+9);
 }
-// Things fixed to the sea bed: chart grid, lobster-pot floats and kelp beds.
-// Waves drift with the wind, so these are what show the boat's real motion.
-function drawFixedRefs(){
-  const z=S.zoom,vw=W/z,vh=H/z,x0=S.cam.x-vw/2-60,y0=S.cam.y-vh/2-60,x1=x0+vw+120,y1=y0+vh+120;
-  // chart grid, 100 m squares
-  const G=1000;
-  ctx.strokeStyle="rgba(200,236,236,0.10)";ctx.lineWidth=1.5/z;ctx.setLineDash([2/z,10/z]);
-  ctx.beginPath();
-  for(let x=Math.floor(x0/G)*G;x<=x1;x+=G){ctx.moveTo(x,y0);ctx.lineTo(x,y1);}
-  for(let y=Math.floor(y0/G)*G;y<=y1;y+=G){ctx.moveTo(x0,y);ctx.lineTo(x1,y);}
-  ctx.stroke();ctx.setLineDash([]);
-  ctx.fillStyle="rgba(200,236,236,0.28)";ctx.font="500 11px 'JetBrains Mono',monospace";ctx.textAlign="left";ctx.textBaseline="top";
-  for(let x=Math.floor(x0/G)*G;x<=x1;x+=G)for(let y=Math.floor(y0/G)*G;y<=y1;y+=G){
-    ctx.fillRect(x-5,y-0.75,10,1.5);ctx.fillRect(x-0.75,y-5,1.5,10);
-    const gx=x/G,gy=-y/G;
-    ctx.fillText((gy>=0?"N":"S")+Math.abs(gy)+" "+(gx>=0?"E":"W")+Math.abs(gx),x+6,y+5);
-  }
-  // kelp beds
-  const KC=KELP_CELL;
-  for(let i=Math.floor(x0/KC)-1;i<=Math.ceil(x1/KC);i++)for(let j=Math.floor(y0/KC)-1;j<=Math.ceil(y1/KC);j++){
-    const bd=kelpBed(i,j);if(bd)drawKelpBed(bd.cx,bd.cy,bd.seed);
-  }
-  // lobster-pot floats: bob in place, never drift
-  const PC=340,cols=["#ff5a4f","#ffd447","#f4f1e8","#4fc3ff"];
-  for(let i=Math.floor(x0/PC);i<=Math.ceil(x1/PC);i++)for(let j=Math.floor(y0/PC);j<=Math.ceil(y1/PC);j++){
-    if(hash(i+50,j+70)>0.3)continue;
-    const x=i*PC+hash(i+5,j)*PC*0.8,y=j*PC+hash2(i,j+5)*PC*0.8;
-    const ph=S.t*2+hash(i,j)*TAU,ring=7+3*Math.sin(ph),bz=1.5+0.8*Math.sin(ph),col=cols[Math.floor(hash2(i+1,j+1)*4)];
-    ctx.strokeStyle="rgba(230,245,242,0.30)";ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(x,y,ring,0,TAU);ctx.stroke();
-    // shadow of the ball and its marker stick
-    ctx.fillStyle="rgba(0,10,20,0.28)";ctx.beginPath();ctx.arc(x+SUN.x*3,y+SUN.y*3,4.5,0,TAU);ctx.fill();
-    ctx.strokeStyle="rgba(0,10,20,0.28)";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+SUN.x*15,y+SUN.y*15);ctx.stroke();
-    limb({x,y,z:bz},{x,y,z:bz+14},1.5,"#2a3236");
-    const fp=toView({x,y,z:bz+14});ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(fp[0],fp[1]);ctx.lineTo(fp[0]+6,fp[1]+2);ctx.lineTo(fp[0],fp[1]+4.5);ctx.closePath();ctx.fill();
-    const bp=toView({x,y,z:bz});ctx.fillStyle=col;ctx.beginPath();ctx.arc(bp[0],bp[1],4.5,0,TAU);ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.4)";ctx.beginPath();ctx.arc(bp[0]-1.5,bp[1]-1.5,1.5,0,TAU);ctx.fill();
-  }
-}
-// Kelp beds live on a fixed grid of cells; ~35% of cells hold one.
-const KELP_CELL=700;
-function kelpBed(i,j){
-  if(hash(i+300,j+11)>0.35)return null;
-  const cx=i*KELP_CELL+hash(i,j+40)*KELP_CELL,cy=j*KELP_CELL+hash2(i+8,j)*KELP_CELL,seed=i*31+j*17;
-  const flow=hash(seed,1)*TAU;
-  // the fronds stream downstream from the plants, so the thick part sits a little downstream of the centre
-  const mx=cx+Math.cos(flow)*35,my=cy+Math.sin(flow)*35;
-  if(Math.hypot(mx,my-150)<480)return null;   // keep the starting area clear
-  return {cx,cy,seed,mx,my};
-}
-// 0 = clear water, 1 = right in the thick of a bed
-function kelpAt(x,y){
-  const i0=Math.floor(x/KELP_CELL),j0=Math.floor(y/KELP_CELL);let k=0;
-  for(let i=i0-1;i<=i0+1;i++)for(let j=j0-1;j<=j0+1;j++){
-    const bd=kelpBed(i,j);if(!bd)continue;
-    const d=Math.hypot(x-bd.mx,y-bd.my)/110;
-    if(d<1)k=Math.max(k,Math.min(1,(1-d)*1.8));
-  }
-  return k;
-}
-// A kelp bed: plants anchored to the sea bed, their long fronds floating up and lying along the
-// surface, all streaming the same way in the tidal current and swaying slightly.
-function drawKelpBed(cx,cy,seed){
-  const flow=hash(seed,1)*TAU, fx=Math.cos(flow), fy=Math.sin(flow), nx=-fy, ny=fx;
-  // murky underwater shadow of the bed
-  const g=ctx.createRadialGradient(cx,cy,0,cx,cy,110);
-  g.addColorStop(0,"rgba(40,52,20,0.32)");g.addColorStop(1,"rgba(40,52,20,0)");
-  ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,110,0,TAU);ctx.fill();
-  const plants=6+Math.floor(hash(seed,2)*4);
-  ctx.lineCap="round";ctx.lineJoin="round";
-  for(let p=0;p<plants;p++){
-    const hx=cx+(hash(seed+p,3)-0.5)*130-fx*40, hy=cy+(hash2(seed,p+4)-0.5)*100-fy*40;
-    const fronds=3+Math.floor(hash(seed+p,5)*3);
-    for(let f=0;f<fronds;f++){
-      const len=70+hash(seed+p*7,f+6)*80, spread=(hash2(seed+p,f+7)-0.5)*0.7, ph=hash(seed+p,f+8)*TAU;
-      const dx=Math.cos(flow+spread), dy=Math.sin(flow+spread);
-      const pts=[];
-      const n=9;
-      for(let k=0;k<=n;k++){
-        const t=k/n, w=Math.sin(t*5+S.t*1.3+ph)*6*t+Math.sin(S.t*0.6+ph)*4*t*t;
-        pts.push([hx+dx*len*t+nx*w, hy+dy*len*t+ny*w]);
-      }
-      // stipe (stem): thin and dark where it rises from deeper water
-      ctx.strokeStyle="rgba(78,66,24,0.55)";ctx.lineWidth=2.2;
-      ctx.beginPath();pts.forEach((q,k)=>k?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.stroke();
-      // blades: long ribbon leaves trailing off the stem
-      for(let k=3;k<n;k+=1){
-        const q=pts[k], r=pts[k+1], ax=r[0]-q[0], ay=r[1]-q[1], al=Math.hypot(ax,ay)||1;
-        const side=(k%2?1:-1), bl=10+6*hash(seed+k,f), sway=Math.sin(S.t*1.7+ph+k)*0.25;
-        const ang=Math.atan2(ay,ax)+side*(0.5+sway);
-        ctx.fillStyle="rgba(160,126,44,0.62)";
-        ctx.beginPath();ctx.ellipse(q[0]+Math.cos(ang)*bl*0.5,q[1]+Math.sin(ang)*bl*0.5,bl*0.55,2.2,ang,0,TAU);ctx.fill();
-      }
-      // gas bladders that keep the fronds floating
-      for(let k=2;k<n;k+=3){
-        const q=pts[k];
-        ctx.fillStyle="rgba(196,160,64,0.85)";ctx.beginPath();ctx.arc(q[0],q[1],2.1,0,TAU);ctx.fill();
-      }
-      // frond tip lying on the surface
-      const tq=pts[n];
-      ctx.fillStyle="rgba(176,140,52,0.7)";ctx.beginPath();ctx.ellipse(tq[0],tq[1],6,2.4,Math.atan2(dy,dx),0,TAU);ctx.fill();
-    }
-  }
-}
+
+// ════════════════════════════════════════════════════════════════════
+// RENDERING: WAKE AND MOTION
+// ════════════════════════════════════════════════════════════════════
 function drawTrail(){
   const tr=S.trail;if(tr.length<2)return;
   ctx.lineCap="round";
@@ -1392,6 +1560,10 @@ function drawMotion(){
   for(let k=1;k<=6;k++){const t=k*0.5;ctx.globalAlpha=1-k/7;ctx.beginPath();ctx.arc(b.x+vx*t,b.y+vy*t,2.4,0,TAU);ctx.fill();}
   ctx.globalAlpha=1;
 }
+
+// ════════════════════════════════════════════════════════════════════
+// RENDERING: BOATS AND SAILORS
+// ════════════════════════════════════════════════════════════════════
 const PLAYER_LOOK={stripe:"#ff7b30",sail:"rgba(255,255,255,0.9)",shirt:"#d23b31"};
 function drawBoat(b=S.boat,F=S.F){
   // bow wave
@@ -1404,11 +1576,8 @@ function drawBoat(b=S.boat,F=S.F){
   }
   drawBoat3D(b,F);
 }
-// ---------- oblique 3D boat ----------
-// The camera looks down at a slight angle, so height (z) shows as a shift up-screen,
-// and the sun casts shadows down-right. Heel rolls every point about the boat's centreline.
-const VIEW={x:0.2,y:-0.72}, SUN={x:0.55,y:0.5};
-const SEA=[14,77,95];
+// The hull outline, heel, sail, rig and sailor are all built from local boat coordinates:
+// a = forward, s = to starboard, z = up. Heel rolls every point about the centreline.
 const HULL=[[23,0],[19,4.2],[14,6.8],[7,8.6],[0,9.2],[-8,9.1],[-16,8.4],[-23,7.2]]; // [forward, half-width]
 function boatFrame(b){
   const ch=Math.cos(b.heel),sh=Math.sin(b.heel),sc=b.scale||1;
@@ -1421,29 +1590,11 @@ function boatFrame(b){
     return {x:b.x+a*fx+s2*rx,y:b.y+a*fy+s2*ry,z:z2};
   };
 }
-const toView=p=>[p.x+p.z*VIEW.x,p.y+p.z*VIEW.y];
-const toShadow=p=>[p.x+Math.max(0,p.z)*SUN.x,p.y+Math.max(0,p.z)*SUN.y];
 function hullRing(P,z,scale){
   const pts=[];
   for(const [a,w] of HULL)pts.push(P(a,w*scale,z));
   for(let i=HULL.length-1;i>=0;i--){const [a,w]=HULL[i];if(w>0)pts.push(P(a,-w*scale,z));}
   return pts;
-}
-function poly(pts,proj){ctx.beginPath();pts.forEach((p,i)=>{const q=proj(p);i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});ctx.closePath();}
-// mixes a colour towards the sea colour for parts below the waterline
-function wet(rgb,z){const k=clamp(-z/7,0,0.75);return "rgb("+rgb.map((v,i)=>Math.round(v+(SEA[i]-v)*k)).join(",")+")";}
-// Part of a polygon that is under the water (z<0): drawn over with sea colour, with foam on the waterline.
-function submerge(pts){
-  const out=[];
-  for(let i=0;i<pts.length;i++){
-    const p=pts[i],q=pts[(i+1)%pts.length],pin=p.z<0,qin=q.z<0;
-    if(pin)out.push(p);
-    if(pin!==qin){const t=p.z/(p.z-q.z);out.push({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t,z:0,wl:true});}
-  }
-  if(out.length<3)return;
-  ctx.fillStyle="rgba(12,70,88,0.86)";poly(out,toView);ctx.fill();
-  const wl=out.filter(p=>p.wl);
-  if(wl.length===2){const a=toView(wl[0]),c=toView(wl[1]);ctx.strokeStyle="rgba(235,248,246,0.55)";ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(c[0],c[1]);ctx.stroke();}
 }
 function boardTip(b){return boatFrame(b)(2,0,-17);}
 function swimmerPos(b){
@@ -1539,7 +1690,6 @@ function drawBoat3D(b,F){
   if(b.cabin){ // a small wheelhouse
     const c0=[P(10,-5.5,5),P(10,5.5,5),P(-8,5.5,5),P(-8,-5.5,5)],c1=[P(9,-5,12),P(9,5,12),P(-7,5,12),P(-7,-5,12)];
     for(let i=0;i<4;i++){const j=(i+1)%4;panel([c0[i],c0[j],c1[j],c1[i]],[214,220,216]);}
-    const topF=facing(c1);
     items.push({z:12,draw:()=>{ctx.fillStyle="#eef0ea";poly(c1,toView);ctx.fill();
       ctx.fillStyle="rgba(40,70,90,0.8)";poly([P(9.2,-4,10.5),P(9.2,4,10.5),P(9.6,4,8),P(9.6,-4,8)],toView);ctx.fill();}});
   }
@@ -1598,7 +1748,6 @@ function drawRig(b,sp,mastBase,mastTop,F,ah,look=PLAYER_LOOK){
     ctx.fillStyle="#ff7b30";ctx.beginPath();ctx.moveTo(mxw+ux*14,myw+uy*14);ctx.lineTo(mxw+ux*7-uy*4,myw+uy*7+ux*4);ctx.lineTo(mxw+ux*7+uy*4,myw+uy*7-ux*4);ctx.closePath();ctx.fill();
   }
 }
-const limb=(p0,p1,w,c)=>{const q0=toView(p0),q1=toView(p1);ctx.strokeStyle=c;ctx.lineWidth=w;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(q0[0],q0[1]);ctx.lineTo(q1[0],q1[1]);ctx.stroke();};
 function drawHead(p,r){const q=toView(p);ctx.fillStyle="#e6b98f";ctx.beginPath();ctx.arc(q[0],q[1],r,0,TAU);ctx.fill();
   ctx.fillStyle="#2f3d44";ctx.beginPath();ctx.arc(q[0],q[1]-0.7,r+0.05,Math.PI*1.05,Math.PI*1.95);ctx.fill();}
 // crew: sits down and leans. Near the middle they sit on the cockpit thwart;
@@ -1620,7 +1769,6 @@ function drawSeatedCrew(b,P,ra,shirt="#d23b31"){
   limb(c.hip,c.sh,6,shirt);limb(c.sh,tEnd,2,"#e6b98f");
   drawHead(c.head,3);
 }
-const lerp3=(p,q,t)=>({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t,z:p.z+(q.z-p.z)*t});
 function drawSwimmer(p,dir,stroke){
   ctx.fillStyle="rgba(235,248,246,0.35)";ctx.beginPath();ctx.ellipse(p.x,p.y,8,6,0,0,TAU);ctx.fill();
   const ax=Math.cos(dir),ay=Math.sin(dir),nx=-ay,ny=ax;
@@ -1698,6 +1846,10 @@ function drawRighter(k){
   limb(k.hip,k.sh,6,"#d23b31");                                       // body in buoyancy aid
   drawHead(k.head,3);
 }
+
+// ════════════════════════════════════════════════════════════════════
+// OVERLAYS
+// ════════════════════════════════════════════════════════════════════
 function targetPoint(){
   if(S.mode!=="race")return null;
   const r=S.race;
@@ -1737,6 +1889,10 @@ function drawCountdown(){
   ctx.fillStyle=rem>0?"#ffd447":"#71e3a6";ctx.fillText(txt,W/2,H*0.3);
   ctx.globalAlpha=1;
 }
+
+// ════════════════════════════════════════════════════════════════════
+// INSTRUMENTS AND HUD
+// ════════════════════════════════════════════════════════════════════
 // ---------- dial ----------
 const dial=$("dial"),dctx=dial.getContext("2d");
 function drawDial(){
@@ -1901,7 +2057,10 @@ function updateHUD(){
   }
 }
 
-// ---------- main loop ----------
+
+// ════════════════════════════════════════════════════════════════════
+// MAIN LOOP
+// ════════════════════════════════════════════════════════════════════
 let last=performance.now(),acc=0;
 const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 function frame(now){
@@ -1919,6 +2078,7 @@ function frame(now){
     const k=reduce?1:1-Math.exp(-3*dt);
     S.cam.x+=(tx-S.cam.x)*k;S.cam.y+=(ty-S.cam.y)*k;
   }
+  updateSound();
   drawWater();
   if(S.mode!=="menu"){
     worldTransform();
@@ -1942,6 +2102,5 @@ requestAnimationFrame(frame);
 $("goOpen").focus();
 })();
 </script>
-
 </body>
 </html>
