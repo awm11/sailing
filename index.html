@@ -101,6 +101,13 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 .mode .k{grid-row:1/3;font-family:var(--mono);font-weight:700;font-size:20px;width:38px;height:38px;display:grid;place-items:center;border-radius:8px;border:1.5px solid var(--panel-line);border-bottom-width:3px}
 .mode h2{margin:0;font-family:var(--display);font-weight:800;font-size:28px;text-transform:uppercase;letter-spacing:.02em;line-height:1}
 .mode p{margin:0;color:var(--muted);min-width:0}
+.levels{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:16px}
+.seg{display:inline-flex;border:1px solid var(--panel-line);border-radius:9px;overflow:hidden;background:var(--panel)}
+.lvl{cursor:pointer;border:0;background:none;padding:7px 14px;font-weight:700;color:var(--muted)}
+.lvl+.lvl{border-left:1px solid var(--panel-line)}
+.lvl[aria-pressed="true"]{background:var(--mark);color:#1d1503}
+#lvlDesc{color:var(--ink);opacity:.9;min-width:0;flex:1 1 220px}
+.hint{color:var(--muted);font-size:12px}
 .primer{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px 24px;margin-top:22px;padding-top:18px;border-top:1px solid var(--panel-line)}
 .primer h3{margin:0 0 4px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mark)}
 .primer p{margin:0;color:var(--ink);opacity:.88;font-size:14px}
@@ -110,6 +117,14 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 .btn{cursor:pointer;padding:9px 16px;border-radius:8px;border:1.5px solid var(--panel-line);background:rgba(255,255,255,.06);font-weight:700}
 .btn.primary{background:var(--signal);border-color:var(--signal);color:#1d0d02}
+.table{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:4px}
+.table li{display:grid;grid-template-columns:28px 1fr auto auto;gap:10px;align-items:center;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.04);font-size:15px}
+.table li.me{background:rgba(255,212,71,.14);color:var(--mark);font-weight:700}
+.table .pos{font-family:var(--mono);font-weight:700}
+.table .nm{display:flex;align-items:center;gap:8px;min-width:0}
+.table .nm i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.table .pen{color:var(--bad);font-family:var(--mono);font-size:12px}
+.table .tm{font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums}
 .results{display:grid;grid-template-columns:1fr auto;gap:6px 20px;font-size:15px}
 .results .v{font-family:var(--mono);font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
 .results .total{font-size:20px;color:var(--mark)}
@@ -126,6 +141,8 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
   #hud{padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}
   .keys{display:none}
 }
+#tipPanel{min-width:210px}
+@media (max-width:1180px){.keys{display:none}}
 @media (max-width:760px){
   #dialPanel,#side{display:none}
   #tipPanel{display:none}
@@ -184,13 +201,22 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
     <p class="lede">A top-down sailing dinghy driven by real sailing physics. Steer with the rudder, set the angle of the sail, and read the wind from the water around you.</p>
     <div class="modes">
       <button class="mode" id="goOpen"><span class="k">1</span><h2>Open water</h2><p>Free sailing in wind that shifts and changes strength, plus seven drills that teach you the points of sail.</p></button>
-      <button class="mode" id="goRace"><span class="k">2</span><h2>Race course</h2><p>Cross the start line, round three marks, dodge rocks, an island and moored boats, then finish against the clock.</p></button>
+      <button class="mode" id="goRace"><span class="k">2</span><h2>Race course</h2><p>Race three other boats. Time your start to the countdown, round three marks, give way when the rules say so, and finish first.</p></button>
+    </div>
+    <div class="levels">
+      <span class="eyebrow">Wind</span>
+      <div class="seg" role="group" aria-label="Wind strength">
+        <button class="lvl" data-l="light" aria-pressed="false">Light</button><button class="lvl" data-l="moderate" aria-pressed="false">Moderate</button><button class="lvl" data-l="strong" aria-pressed="false">Strong</button>
+      </div>
+      <span id="lvlDesc"></span>
+      <span class="hint"><kbd>←</kbd> <kbd>→</kbd> to change</span>
     </div>
     <div class="primer">
       <div><h3>The wind</h3><p>Wave crests lie across the wind and roll downwind. Darker patches are gusts. Moored boats always point into the wind.</p></div>
       <div><h3>The sail</h3><p>The sail works like a wing. Pull it in until it stops flapping, but not so far that the air stalls. The trim chip tells you which.</p></div>
       <div><h3>Balance</h3><p>The wind pushes the boat over sideways. Lean your weight out on the high side to keep it flat. In a strong gust, let the sail out as well, or you'll capsize.</p></div>
       <div><h3>The no-go zone</h3><p>No boat can sail straight into the wind. To go upwind you zig-zag at about 45° to it, turning the bow through the wind each time (a tack).</p></div>
+      <div><h3>Right of way</h3><p>A boat with the wind on its left (port tack) must keep clear of one with the wind on its right (starboard tack). On the same tack, the boat further upwind keeps clear. Hitting a boat you should have avoided costs 10 seconds.</p></div>
       <div><h3>Keys</h3>
         <div class="keymap">
           <span><kbd>←</kbd> <kbd>→</kbd></span><span>Rudder: steer left / right (also <kbd>A</kbd> <kbd>D</kbd>)</span>
@@ -225,11 +251,11 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 
 <div id="finish" class="overlay" hidden>
   <div class="card">
-    <h2>Finished</h2>
+    <h2 id="fTitle">Finished</h2>
+    <ol class="table" id="fTable"></ol>
     <div class="results">
-      <span>Sailing time</span><span class="v" id="fTime"></span>
-      <span>Penalties</span><span class="v" id="fPen"></span>
-      <span class="total">Race time</span><span class="v total" id="fTotal"></span>
+      <span>Your start</span><span class="v" id="fStart"></span>
+      <span>Your penalties</span><span class="v" id="fPen"></span>
       <span>Personal best</span><span class="v" id="fBest"></span>
     </div>
     <div class="btns"><button class="btn primary" id="again">Race again (R)</button><button class="btn" id="toMenu2">Menu (M)</button></div>
@@ -257,7 +283,7 @@ const PX_PER_KN=12, PX_PER_M=10;
 // PHYSICS-START
 // Units: px and seconds. Heading 0 = north (screen up), clockwise positive.
 const K={sail:0.0024,drag:0.0017,lin:0.012,lat:3.2,side:0.10,windage:0.0001,rud:0.35,turn:0.016,turnBase:0.18,sheetMin:0.08,sheetMax:1.5,
-  heelWind:0.013,crew:0.6,heelK:9,heelDamp:3.2,helm:0.8,capsize:0.85};
+  heelWind:0.016,crew:0.6,heelK:9,heelDamp:3.2,helm:0.8,capsize:0.70};
 // Sail force coefficient by angle of attack (flat-plate with a lift boost at small angles)
 const sailCoef=al=>al<=0?0:Math.min(1,1.7*Math.sin(al));
 // Best boom angle for a given apparent wind angle (maximises forward drive)
@@ -309,30 +335,69 @@ function stepHeel(b,F,dt){
 
 // ---------- course ----------
 const LINE={x1:-260,x2:260,y:0};
-const MARKS=[{x:0,y:-2000,name:"Windward mark"},{x:1300,y:-1100,name:"Wing mark"},{x:0,y:520,name:"Leeward mark"}];
-const ROUND_R=320, ROUND_NEED=2.0;
+// Marks are rounded to port (kept on your left), so the course runs anticlockwise:
+// start -> windward (upwind) -> wing (reach, to the west) -> leeward (reach) -> finish (upwind).
+const MARKS=[{x:0,y:-2000,name:"Windward mark"},{x:-1300,y:-1100,name:"Wing mark"},{x:0,y:520,name:"Leeward mark"}];
+const ROUND_R=320, FINISH={x:0,y:0};
+// For each mark: the direction you arrive from, the direction you leave towards, and a "gate" ray on the
+// outside of the turn. You have rounded the mark when you cross the gate going anticlockwise.
+MARKS.forEach((m,i)=>{
+  const prev=i?MARKS[i-1]:FINISH, next=i<MARKS.length-1?MARKS[i+1]:FINISH;
+  const ix=prev.x-m.x,iy=prev.y-m.y,il=Math.hypot(ix,iy),ox=next.x-m.x,oy=next.y-m.y,ol=Math.hypot(ox,oy);
+  m.thIn=Math.atan2(iy,ix);m.thOut=Math.atan2(oy,ox);
+  const gx=-(ix/il+ox/ol),gy=-(iy/il+oy/ol);
+  m.gate=Math.atan2(gy,gx);
+});
 function raceObstacles(){
   return [
-    {x:-380,y:-950,r:46,kind:"rock",seed:1},{x:-318,y:-1012,r:30,kind:"rock",seed:2},{x:-436,y:-1040,r:26,kind:"rock",seed:3},
-    {x:300,y:-1450,r:42,kind:"rock",seed:4},{x:362,y:-1398,r:24,kind:"rock",seed:5},
-    {x:720,y:-340,r:170,kind:"island",seed:6},
-    {x:950,y:-1760,r:24,kind:"moored",seed:7},{x:1090,y:-620,r:24,kind:"moored",seed:8},{x:-160,y:-1660,r:24,kind:"moored",seed:9},
+    {x:380,y:-950,r:46,kind:"rock",seed:1},{x:318,y:-1012,r:30,kind:"rock",seed:2},{x:436,y:-1040,r:26,kind:"rock",seed:3},
+    {x:-300,y:-1450,r:42,kind:"rock",seed:4},{x:-362,y:-1398,r:24,kind:"rock",seed:5},
+    {x:-170,y:-720,r:34,kind:"rock",seed:12},{x:-210,y:-668,r:18,kind:"rock",seed:13},
+    {x:640,y:-420,r:40,kind:"rock",seed:14},{x:700,y:-470,r:24,kind:"rock",seed:15},{x:590,y:-360,r:16,kind:"rock",seed:16},
+    {x:260,y:-1320,r:30,kind:"rock",seed:17},
+    {x:-700,y:-1520,r:38,kind:"rock",seed:18},{x:-752,y:-1560,r:20,kind:"rock",seed:19},
+    {x:-1180,y:-260,r:32,kind:"rock",seed:21},
+    {x:-480,y:300,r:28,kind:"rock",seed:22},{x:420,y:640,r:36,kind:"rock",seed:23},
+    {x:-1500,y:-1650,r:44,kind:"rock",seed:24},{x:120,y:-2350,r:30,kind:"rock",seed:25},
+    {x:-720,y:-340,r:170,kind:"island",seed:6},
+    {x:-950,y:-1760,r:24,kind:"moored",seed:7},{x:-1090,y:-620,r:24,kind:"moored",seed:8},{x:160,y:-1660,r:24,kind:"moored",seed:9},
     {x:260,y:0,r:26,kind:"committee",seed:10},{x:-260,y:0,r:11,kind:"pin",seed:11}
   ];
 }
 function openObstacles(){
   const out=[];
-  for(let i=0;i<14;i++){
-    const a=hash(i,3)*TAU, d=900+hash(i,7)*2600;
-    out.push({x:Math.cos(a)*d,y:Math.sin(a)*d,r:20+hash(i,9)*34,kind:"rock",seed:20+i});
+  // rocky outcrops: clusters of 1-5 rocks scattered around, with clear water near the start
+  for(let i=0;i<46;i++){
+    const a=hash(i,3)*TAU, d=420+Math.sqrt(hash(i,7))*5200;
+    const cx=Math.cos(a)*d, cy=Math.sin(a)*d, n=1+Math.floor(hash(i,11)*5);
+    for(let k=0;k<n;k++){
+      const ox=k?(hash(i*5+k,13)-0.5)*130:0, oy=k?(hash2(i*5+k,17)-0.5)*130:0;
+      out.push({x:cx+ox,y:cy+oy,r:(k?14:22)+hash(i*5+k,9)*(k?22:34),kind:"rock",seed:20+i*5+k});
+    }
   }
   for(let i=0;i<6;i++){const a=hash(i,13)*TAU,d=600+hash(i,17)*2000;out.push({x:Math.cos(a)*d,y:Math.sin(a)*d,r:24,kind:"moored",seed:40+i});}
   return out;
 }
 
+// ---------- difficulty ----------
+// spd: wind strength range (px/s; 12 px/s = 1 knot) · shift: size of a persistent wind shift (rad)
+// every: seconds between shifts · lim: furthest the wind wanders from its average · gust: extra strength in a gust
+const LEVELS={
+  light:{label:"Light",desc:"5 to 9 knots. Gentle shifts and small gusts. Hard to capsize.",
+    spd:[60,108],start:85,shift:[0.06,0.14],every:[35,60],lim:0.25,osc:0.08,gust:[0.10,0.18],nG:4,capsize:0.85},
+  moderate:{label:"Moderate",desc:"7 to 14 knots. Regular wind shifts and gusts. Lean out in the puffs.",
+    spd:[85,165],start:115,shift:[0.10,0.26],every:[22,45],lim:0.45,osc:0.12,gust:[0.18,0.32],nG:6,capsize:0.70},
+  strong:{label:"Strong",desc:"12 to 19 knots. Big shifts and heavy gusts. Easy to capsize.",
+    spd:[145,225],start:175,shift:[0.15,0.40],every:[15,32],lim:0.70,osc:0.16,gust:[0.28,0.45],nG:8,capsize:0.66}
+};
+const LEVEL_KEYS=["light","moderate","strong"];
+let levelKey="moderate";
+try{const v=localStorage.getItem("closeHauledLevel");if(LEVELS[v])levelKey=v;}catch(e){}
+const LV=()=>LEVELS[levelKey];
+
 // ---------- state ----------
 const S={mode:"menu",paused:false,t:0,zoom:1,cam:{x:0,y:200},wind:{base:0,from:0,speed:110},gusts:[],trail:[],trailT:0,
-  obstacles:[],boat:null,F:null,tips:true,auto:false,side:0,hitCd:0,race:null,open:null,lastTwa:0,ws:null,invert:false,shift:0};
+  obstacles:[],boat:null,F:null,tips:true,auto:false,side:0,hitCd:0,race:null,open:null,lastTwa:0,ws:null,invert:false,shift:0,fx:[]};
 try{S.invert=localStorage.getItem("closeHauledInvert")==="1";}catch(e){}
 function newBoat(x,y,h){return {x,y,h,u:0,v:0,rudder:0,sheet:0.7,boomDraw:0.4,heel:0,hv:0,crew:0,capsized:false,rightT:0};}
 
@@ -347,19 +412,21 @@ const DRILLS=[
 ];
 
 function startMode(mode){
-  S.mode=mode;S.paused=false;S.t=0;S.trail=[];S.hitCd=0;S.auto=false;
+  S.mode=mode;S.paused=false;S.t=0;S.trail=[];S.hitCd=0;S.auto=false;S.fx=[];S.ais=[];S.rowTip=null;
+  K.capsize=LV().capsize;
   if(mode==="open"){
-    S.wind.base=0.6;S.wind.from=0.6;S.wind.speed=110;
+    S.wind.base=0.6;S.wind.from=0.6;S.wind.speed=LV().start;
     S.boat=newBoat(0,0,0.6+Math.PI/2);
     S.boat.u=30;
     S.obstacles=openObstacles();
     S.open={dist:0,top:0,done:{},closeT:0};
   }else{
-    S.wind.base=0;S.wind.from=0;S.wind.speed=105;
+    S.wind.base=0;S.wind.from=0;S.wind.speed=LV().start;
     S.boat=newBoat(-140,260,Math.PI/2);
     S.boat.u=20;
     S.obstacles=raceObstacles();
-    S.race={stage:"pre",next:0,sweep:0,lastA:null,warned:false,start:0,time:0,pen:0};
+    S.race={stage:"pre",gun:COUNTDOWN,signals:[30,20,10,5,4,3,2,1,0],time:0,...newRacerState()};
+    S.ais=AI_CREW.map(makeAI);
   }
   S.cam.x=S.boat.x;S.cam.y=S.boat.y;
   S.lastTwa=wrap(S.wind.from-S.boat.h);
@@ -374,38 +441,38 @@ function startMode(mode){
 // ---------- wind ----------
 function initGusts(){
   S.gusts=[];
-  const n=S.mode==="race"?4:7;
+  const n=S.mode==="menu"?6:LV().nG;
   for(let i=0;i<n;i++)S.gusts.push(spawnGust(true));
 }
 function spawnGust(anywhere){
   const f=S.wind.from, ux=Math.sin(f), uy=-Math.cos(f), px=-uy, py=ux;
   const along=anywhere?(Math.random()*2-1)*1300:1300, across=(Math.random()*2-1)*1100;
-  return {x:S.cam.x+ux*along+px*across,y:S.cam.y+uy*along+py*across,r:160+Math.random()*200,s:(S.mode==="race"?0.18:0.25)+Math.random()*0.15};
+  return {x:S.cam.x+ux*along+px*across,y:S.cam.y+uy*along+py*across,r:160+Math.random()*200,s:LV().gust[0]+Math.random()*(LV().gust[1]-LV().gust[0])};
 }
 function initWindState(){
   const race=S.mode==="race";
-  S.ws={drift:0,driftT:0,nextShift:race?18:14,spdT:S.wind.speed,nextSpd:race?35:25,ref:S.wind.from,announced:false,ph:Math.random()*TAU};
+  S.ws={drift:0,driftT:0,nextShift:race?COUNTDOWN+12:14,spdT:S.wind.speed,nextSpd:race?COUNTDOWN+20:25,ref:S.wind.from,announced:false,ph:Math.random()*TAU};
 }
 // Wind direction = steady oscillation + persistent shifts that arrive every half-minute or so.
 // Wind strength wanders between light and strong.
 function updateWind(dt){
   const t=S.t,ws=S.ws;
   if(ws&&S.mode!=="menu"){
-    const race=S.mode==="race";
+    const race=S.mode==="race",L=LV(),rnd=(r)=>r[0]+Math.random()*(r[1]-r[0]);
     ws.nextShift-=dt;
     if(ws.nextShift<=0){
-      const lim=race?0.3:0.9,size=race?0.1+Math.random()*0.14:0.15+Math.random()*0.35;
+      const lim=race?L.lim*0.7:L.lim*1.4,size=rnd(L.shift);
       let dir=Math.random()<0.5?-1:1; if(Math.abs(ws.drift+dir*size)>lim)dir=-dir;
       ws.driftT=ws.drift+dir*size;
-      ws.nextShift=race?22+Math.random()*25:25+Math.random()*35;
+      ws.nextShift=rnd(L.every);
     }
     ws.drift=approach(ws.drift,ws.driftT,0.03*dt);
-    S.wind.from=S.wind.base+ws.drift+(race?0.12:0.16)*Math.sin(t/(race?8:10)+ws.ph)+0.05*Math.sin(t/3.7+ws.ph*2);
+    S.wind.from=S.wind.base+ws.drift+L.osc*Math.sin(t/(race?8:10)+ws.ph)+0.05*Math.sin(t/3.7+ws.ph*2);
     ws.nextSpd-=dt;
     if(ws.nextSpd<=0){
-      const nt=race?85+Math.random()*75:60+Math.random()*150;
+      const nt=rnd(L.spd);
       if(Math.abs(nt-ws.spdT)>25)toast(nt>ws.spdT?"Wind building":"Wind easing","");
-      ws.spdT=nt;ws.nextSpd=race?30+Math.random()*25:28+Math.random()*30;
+      ws.spdT=nt;ws.nextSpd=28+Math.random()*30;
     }
     S.wind.speed=approach(S.wind.speed,ws.spdT,3*dt);
     ws.ref+=wrap(S.wind.from-ws.ref)*Math.min(1,dt/25);
@@ -436,6 +503,7 @@ window.addEventListener("keydown",e=>{
   if(S.mode==="menu"){
     if(c==="Digit1"||c==="Numpad1")startMode("open");
     if(c==="Digit2"||c==="Numpad2")startMode("race");
+    if(c==="ArrowLeft"||c==="ArrowRight"){const i=LEVEL_KEYS.indexOf(levelKey)+(c==="ArrowRight"?1:-1);setLevel(LEVEL_KEYS[clamp(i,0,2)]);}
     return;
   }
   if(c==="KeyP"||c==="Escape"){if(!finishOpen())togglePause();}
@@ -469,6 +537,13 @@ function show(id,v){$(id).hidden=!v;}
 const finishOpen=()=>!$("finish").hidden;
 function togglePause(){S.paused=!S.paused;show("pause",S.paused);if(!S.paused)cv.focus();}
 function toMenu(){S.mode="menu";S.paused=false;show("pause",false);show("finish",false);show("hud",false);show("menu",true);$("goOpen").focus();}
+function setLevel(k){
+  levelKey=k;try{localStorage.setItem("closeHauledLevel",k);}catch(e){}
+  document.querySelectorAll(".lvl").forEach(b=>b.setAttribute("aria-pressed",b.dataset.l===k?"true":"false"));
+  $("lvlDesc").textContent=LEVELS[k].desc;
+}
+document.querySelectorAll(".lvl").forEach(b=>b.onclick=()=>setLevel(b.dataset.l));
+setLevel(levelKey);
 $("goOpen").onclick=()=>startMode("open");
 $("goRace").onclick=()=>startMode("race");
 $("resume").onclick=togglePause;
@@ -477,6 +552,7 @@ $("again").onclick=()=>startMode("race");
 
 // ---------- toasts ----------
 function toast(text,cls){
+  if(S.silent)return;
   const el=document.createElement("div");el.className="toast "+(cls||"");el.textContent=text;
   $("toasts").appendChild(el);
   while($("toasts").children.length>3)$("toasts").firstChild.remove();
@@ -489,6 +565,8 @@ function step(dt){
   S.t+=dt;
   updateWind(dt);
   const b=S.boat;
+  stepFx(dt);
+  if(S.mode==="race"){stepRaceClock();for(const ai of S.ais)stepAI(ai,dt);boatEncounters(dt);}
   if(b.capsized){stepCapsized(b,dt);return;}
   if(held("leanL"))b.crew=Math.max(-1,b.crew-1.4*dt);
   if(held("leanR"))b.crew=Math.min(1,b.crew+1.4*dt);
@@ -504,6 +582,12 @@ function step(dt){
   F.gust=w.gust;F.tws=w.speed;
   const px=b.x,py=b.y;
   integrate(b,F,dt);
+  // seaweed wraps round the centreboard and rudder: heavy extra drag, and the rudder bites less
+  const kelp=kelpAt(b.x,b.y);
+  if(kelp>0){b.u-=b.u*0.9*kelp*dt;b.v-=b.v*0.9*kelp*dt;}
+  if(kelp>0.15&&!S.inKelp){S.inKelp=true;toast("In the seaweed","bad");}
+  else if(kelp<0.02)S.inKelp=false;
+  F.kelp=kelp;
   S.F=F;
   // boom swings across through the centreline on a tack or gybe
   b.boomDraw=approach(b.boomDraw,F.boom*F.lee,4.5*dt);
@@ -538,39 +622,95 @@ function step(dt){
   S.trailT+=dt;
   if(S.trailT>0.08){S.trailT=0;S.trail.push({x:b.x,y:b.y,h:b.h,s:Math.abs(b.u)});if(S.trail.length>450)S.trail.shift();}
 }
+// Capsize sequence: falling (boat rolls onto its side) -> over (sailor swims to the centreboard,
+// holding Space levers the boat up) -> popping (the boat springs upright and the sailor climbs in).
+const FLAT=1.5;                                   // lying on its side: ~86 degrees
 function capsize(b){
-  b.capsized=true;b.rightT=0;b.rudder=0;b.hv=0;b.heel=Math.sign(b.heel)*1.45;
+  const side=b.heel>=0?1:-1;
+  b.capsized=true;b.rudder=0;
+  b.cap={phase:"falling",t:0,side,hm:Math.abs(b.heel),hv:Math.max(0.6,b.hv*side),swim:0,lever:0,
+    crew0:b.crew,boom0:b.boomDraw,splashed:false};
   toast("Capsized!","bad");
 }
 function stepCapsized(b,dt){
-  b.u*=Math.exp(-1.6*dt);b.v*=Math.exp(-2*dt);
+  const c=b.cap;c.t+=dt;
+  b.u*=Math.exp(-1.8*dt);b.v*=Math.exp(-2*dt);
   const w=windAt(b.x,b.y),tx=-Math.sin(w.from),ty=Math.cos(w.from);
-  b.x+=(Math.sin(b.h)*b.u+tx*w.speed*0.04)*dt;b.y+=(-Math.cos(b.h)*b.u+ty*w.speed*0.04)*dt;
-  b.rightT=held("up")?b.rightT+dt:Math.max(0,b.rightT-dt*0.5);
-  if(b.rightT>=1.6){
-    b.capsized=false;b.heel=0;b.hv=0;b.crew=0;b.sheet=1.3;b.u=0;b.v=0;b.rightT=0;
-    toast("Back upright","good");
+  const drift=c.phase==="popping"?0.01:0.035;
+  b.x+=(Math.sin(b.h)*b.u+tx*w.speed*drift)*dt;b.y+=(-Math.cos(b.h)*b.u+ty*w.speed*drift)*dt;
+  // the boom swings out over the low side as she goes over
+  b.boomDraw=approach(b.boomDraw,c.side*1.15,2.2*dt);
+  if(c.phase==="falling"){
+    c.hv+=(2.6+3*Math.sin(c.hm))*dt;                 // tips faster the further it goes
+    c.hm+=c.hv*dt;
+    if(c.hm>=FLAT){
+      c.hm=FLAT;c.hv=-c.hv*0.25;c.phase="over";c.t=0;
+      splashAlongMast(b,1);
+    }
+  }else if(c.phase==="over"){
+    const pushing=held("up");
+    c.swim=Math.min(1,c.swim+dt*(pushing?1.1:0.55));
+    // settle back to lying flat, with a gentle bob
+    const target=FLAT+0.035*Math.sin(S.t*2.1);
+    if(pushing&&c.swim>=1){c.hm-=0.36*dt*(0.6+0.4*Math.sin(c.hm));c.hv=0;c.lever=Math.min(1,c.lever+dt*2);}
+    else{c.hv+=((target-c.hm)*10-c.hv*4)*dt;c.hm+=c.hv*dt;c.lever=Math.max(0,c.lever-dt*2);}
+    if(c.swim>=1&&Math.random()<dt*2)S.fx.push({k:"ring",x:boardTip(b).x,y:boardTip(b).y,r:4,life:1});
+    if(c.hm<0.95){c.phase="popping";c.t=0;c.hv=-2.4;}
+  }else if(c.phase==="popping"){
+    // springs up past upright, rocks, and settles; water pours off the sail
+    c.hv+=(-14*c.hm-3.2*c.hv)*dt;c.hm+=c.hv*dt;
+    if(c.t<0.7&&Math.random()<dt*40)pourDrop(b);
+    if(c.t>1.5){
+      b.capsized=false;b.heel=c.side*c.hm;b.hv=c.side*c.hv;b.crew=0;b.sheet=1.4;b.u=0;b.v=0;b.cap=null;
+      toast("Back upright","good");
+      return;
+    }
   }
-  if(S.race&&S.race.stage==="racing")S.race.time=S.t-S.race.start;
+  b.heel=c.side*c.hm;
+  if(c.phase==="over"&&c.swim<1&&Math.random()<dt*5){const sw=swimmerPos(b);S.fx.push({k:"ring",x:sw.x,y:sw.y,r:3,life:0.8});}
+  if(S.race&&S.race.stage!=="pre")S.race.time=S.t-S.race.gun;
   collide(b,dt);
+}
+// ---- splashes ----
+function splashAlongMast(b,strength){
+  const P=boatFrame(b);
+  for(let k=0;k<=6;k++){
+    const p=P(8,0,5+k*9);
+    S.fx.push({k:"ring",x:p.x,y:p.y,r:6+k,life:1.2});
+    for(let d=0;d<4*strength;d++){
+      const a=Math.random()*TAU,v=20+Math.random()*50;
+      S.fx.push({k:"drop",x:p.x,y:p.y,z:2,vx:Math.cos(a)*v,vy:Math.sin(a)*v,vz:40+Math.random()*60,life:1.5});
+    }
+  }
+}
+function pourDrop(b){
+  const P=boatFrame(b),t=Math.random(),p=P(8-t*8,(Math.random()-0.5)*20*t,8+t*50);
+  S.fx.push({k:"drop",x:p.x,y:p.y,z:Math.max(0,p.z),vx:(Math.random()-0.5)*20,vy:(Math.random()-0.5)*20,vz:-5,life:1.5});
+}
+function stepFx(dt){
+  for(const f of S.fx){
+    f.life-=dt;
+    if(f.k==="ring")f.r+=26*dt;
+    else{f.vz-=260*dt;f.x+=f.vx*dt;f.y+=f.vy*dt;f.z+=f.vz*dt;if(f.z<=0){f.life=0;S.fx.push({k:"ring",x:f.x,y:f.y,r:1.5,life:0.5});}}
+  }
+  S.fx=S.fx.filter(f=>f.life>0);
+  if(S.fx.length>500)S.fx.splice(0,S.fx.length-500);
+}
+function drawFx(kind){
+  for(const f of S.fx){
+    if(f.k!==kind)continue;
+    if(f.k==="ring"){ctx.strokeStyle="rgba(235,248,246,"+(0.6*Math.min(1,f.life)).toFixed(2)+")";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,TAU);ctx.stroke();}
+    else{const q=toView(f);ctx.fillStyle="rgba(235,248,246,0.85)";ctx.beginPath();ctx.arc(q[0],q[1],1.4,0,TAU);ctx.fill();}
+  }
 }
 function collide(b,dt){
   S.hitCd=Math.max(0,S.hitCd-dt);
-  const list=S.obstacles.slice();
-  if(S.mode==="race")for(const m of MARKS)list.push({x:m.x,y:m.y,r:10,kind:"mark"});
-  for(const o of list){
-    const dx=b.x-o.x,dy=b.y-o.y,d=Math.hypot(dx,dy),min=o.r+13;
-    if(d<min){
-      const nx=dx/(d||1),ny=dy/(d||1);
-      b.x=o.x+nx*min;b.y=o.y+ny*min;
-      b.u*=-0.25;b.v=0;
-      if(S.hitCd<=0){
-        S.hitCd=1.2;
-        const what={rock:"Hit a rock",island:"Ran aground",moored:"Hit a moored boat",committee:"Hit the committee boat",pin:"Hit the pin buoy",mark:"Touched the mark"}[o.kind];
-        if(S.race&&S.race.stage==="racing"){S.race.pen+=5;toast(what+" +5 s","bad");}
-        else toast(what,"bad");
-      }
-    }
+  const o=bounceOff(b);
+  if(o&&S.hitCd<=0){
+    S.hitCd=1.2;
+    const what={rock:"Hit a rock",island:"Ran aground",moored:"Hit a moored boat",committee:"Hit the committee boat",pin:"Hit the pin buoy",mark:"Touched the mark"}[o.kind];
+    if(S.race&&S.race.stage==="racing"&&S.race.started){S.race.pen+=5;toast(what+" +5 s","bad");}
+    else toast(what,"bad");
   }
 }
 function crossedLine(px,py,x,y){
@@ -578,43 +718,286 @@ function crossedLine(px,py,x,y){
   const ix=px+(x-px)*((py-LINE.y)/(py-y));
   return ix>LINE.x1&&ix<LINE.x2;
 }
-function stepRace(b,dt,px,py){
+// ================= RACING =================
+const COUNTDOWN=40;                                   // seconds from the warning to the start gun
+function newRacerState(){return {next:0,lastA:null,lastP:null,warned:false,started:false,ocs:false,finished:false,finishT:0,pen:0,startLate:0};}
+// race clock: countdown signals, then the gun
+function stepRaceClock(){
   const r=S.race;
-  if(r.stage==="pre"){
-    if(crossedLine(px,py,b.x,b.y)){r.stage="racing";r.start=S.t;toast("Race started","mark");}
-    return;
-  }
-  if(r.stage!=="racing")return;
-  r.time=S.t-r.start;
-  if(r.next<MARKS.length){
-    const m=MARKS[r.next],dx=b.x-m.x,dy=b.y-m.y,d=Math.hypot(dx,dy);
-    if(d<ROUND_R){
-      const a=Math.atan2(dy,dx);
-      if(r.lastA!==null)r.sweep+=wrap(a-r.lastA);
-      r.lastA=a;
-      if(r.sweep<=-ROUND_NEED){
-        toast("Mark "+(r.next+1)+" rounded","mark");
-        r.next++;r.sweep=0;r.lastA=null;r.warned=false;
-        if(r.next===MARKS.length)setTimeout(()=>toast("Now finish upwind","mark"),900);
-      }else if(r.sweep>1.6&&!r.warned){r.warned=true;toast("Wrong side: keep the mark on your left","bad");}
-    }else{r.sweep=0;r.lastA=null;}
-  }else if(crossedLine(px,py,b.x,b.y)){
-    r.stage="done";
-    finishRace();
+  if(r.stage!=="pre")return;
+  const rem=r.gun-S.t;
+  while(r.signals.length&&rem<=r.signals[0]){
+    const sgl=r.signals.shift();
+    if(sgl===0){
+      r.stage="racing";toast("GO!","mark");
+      if(S.boat.y<LINE.y&&!r.started)toast("You're on the wrong side of the line: go back and cross it","bad");
+    }else if(sgl>=10)toast(sgl+" seconds to the start","");
+    else toast(String(sgl),"mark");
   }
 }
+// progress of one racer (player or computer boat) round the course
+function trackRacer(rs,b,px,py,me){
+  const say=(t,c)=>{if(me)toast(t,c);};
+  if(rs.finished)return;
+  const pre=S.race.stage==="pre";
+  if(!rs.started){
+    if(crossedLine(px,py,b.x,b.y)){
+      if(pre){rs.ocs=true;say("Over early! Go back below the line","bad");}
+      else if(!rs.ocs){
+        rs.started=true;rs.startLate=S.t-S.race.gun;
+        say(rs.startLate<2?"Great start!":"Started "+rs.startLate.toFixed(1)+" s after the gun",rs.startLate<2?"good":"");
+      }
+    }
+    if(rs.ocs&&b.y>LINE.y+4){rs.ocs=false;say(pre?"Back behind the line. Wait for the gun":"Clear. Now cross the line to start","mark");}
+    return;
+  }
+  // Going back round the last mark the wrong way undoes the rounding (like unwinding a string).
+  if(rs.next>0){
+    const pm=MARKS[rs.next-1],pdx=b.x-pm.x,pdy=b.y-pm.y;
+    if(Math.hypot(pdx,pdy)<ROUND_R){
+      const rel=wrap(Math.atan2(pdy,pdx)-pm.gate);
+      if(rs.lastP!=null&&Math.abs(rel)<1.2&&Math.abs(rs.lastP)<1.2&&rs.lastP<0&&rel>=0){
+        rs.next--;rs.lastA=rel;rs.lastP=null;rs.warned=false;
+        say("Unrounded: go round mark "+(rs.next+1)+" again","bad");
+        return;
+      }
+      rs.lastP=rel;
+    }else rs.lastP=null;
+  }
+  if(rs.next<MARKS.length){
+    const m=MARKS[rs.next],dx=b.x-m.x,dy=b.y-m.y,d=Math.hypot(dx,dy);
+    if(d<ROUND_R){
+      // angle of the boat around the mark, measured from the gate ray. On screen, anticlockwise = decreasing.
+      const rel=wrap(Math.atan2(dy,dx)-m.gate);
+      if(rs.lastA!==null&&Math.abs(rel)<1.2&&Math.abs(rs.lastA)<1.2){
+        if(rs.lastA>0&&rel<=0){
+          say("Mark "+(rs.next+1)+" rounded","mark");
+          rs.next++;rs.lastA=null;rs.lastP=rel;rs.warned=false;
+          if(me&&rs.next===MARKS.length)setTimeout(()=>toast("Now cross the finish line going upwind","mark"),900);
+          return;
+        }
+        if(rs.lastA<0&&rel>=0&&!rs.warned){rs.warned=true;say("Wrong way round: keep the mark on your left","bad");}
+      }
+      rs.lastA=rel;
+    }else{rs.lastA=null;}
+  }else if(crossedLine(px,py,b.x,b.y)){
+    rs.finished=true;rs.finishT=S.t-S.race.gun+rs.pen;
+    if(!me)toast(rs.name+" has finished","");
+  }
+}
+function stepRace(b,dt,px,py){
+  const r=S.race;
+  if(r.stage==="racing")r.time=S.t-r.gun;
+  trackRacer(r,b,px,py,true);
+  if(r.finished&&r.stage!=="done"){r.stage="done";finishRace();}
+}
+// how far round the course each racer is, for live positions
+function raceScore(rs,b){
+  if(rs.finished)return 1e7-rs.finishT;
+  if(!rs.started)return -Math.hypot(b.x,b.y);
+  const t=rs.next<MARKS.length?MARKS[rs.next]:FINISH;
+  return (1+rs.next)*1e5-Math.hypot(b.x-t.x,b.y-t.y);
+}
+function playerPosition(){
+  const me=raceScore(S.race,S.boat);
+  return 1+S.ais.filter(a=>raceScore(a.rs,a.b)>me).length;
+}
+const ord=n=>n+(n===1?"st":n===2?"nd":n===3?"rd":"th");
 function fmt(t){const m=Math.floor(t/60),s=t-m*60;return m+":"+(s<10?"0":"")+s.toFixed(1);}
 function finishRace(){
-  const r=S.race,total=r.time+r.pen;
-  let best=null;
-  try{best=parseFloat(localStorage.getItem("closeHauledBest"));}catch(e){}
-  const isBest=!(best>0)||total<best;
-  if(isBest){best=total;try{localStorage.setItem("closeHauledBest",String(total));}catch(e){}}
-  $("fTime").textContent=fmt(r.time);
+  const r=S.race;
+  r.finishT=r.time+r.pen;
+  // let the computer boats sail on (quickly, off screen) until they finish too
+  S.silent=true;
+  const dt=1/30;
+  for(let i=0;i<30*900&&S.ais.some(a=>!a.rs.finished);i++){S.t+=dt;updateWind(dt);for(const ai of S.ais)stepAI(ai,dt);boatEncounters(dt);}
+  S.silent=false;
+  const rows=[{name:"You",rs:r,me:true},...S.ais.map(a=>({name:a.name,rs:a.rs,look:a.look}))];
+  rows.sort((x,y)=>(x.rs.finished?x.rs.finishT:1e9)-(y.rs.finished?y.rs.finishT:1e9));
+  const pos=rows.findIndex(x=>x.me)+1;
+  let best=null;const key="closeHauledBest_"+levelKey;
+  try{best=parseFloat(localStorage.getItem(key));}catch(e){}
+  const isBest=!(best>0)||r.finishT<best;
+  if(isBest){best=r.finishT;try{localStorage.setItem(key,String(r.finishT));}catch(e){}}
+  $("fTitle").textContent=pos===1?"You won!":"You finished "+ord(pos);
+  $("fTable").innerHTML=rows.map((x,i)=>'<li class="'+(x.me?"me":"")+'"><span class="pos">'+(i+1)+'</span><span class="nm">'+
+    (x.me?"You":'<i style="background:'+x.look.stripe+'"></i>'+x.name)+'</span><span class="pen">'+(x.rs.pen?"+"+x.rs.pen+" s":"")+
+    '</span><span class="tm">'+(x.rs.finished?fmt(x.rs.finishT):"DNF")+"</span></li>").join("");
+  $("fStart").textContent=r.startLate<1?"On the gun":fmt(r.startLate)+" late";
   $("fPen").textContent=r.pen?"+"+r.pen+" s":"none";
-  $("fTotal").textContent=fmt(total);
-  $("fBest").textContent=fmt(best)+(isBest?"  new best":"");
+  $("fBest").textContent=fmt(best)+(isBest?"  new best":"")+" ("+LV().label.toLowerCase()+" wind)";
   show("finish",true);$("again").focus();
+}
+
+// ================= COMPUTER BOATS =================
+const AI_CREW=[
+  {name:"Blue",  look:{stripe:"#3f8ef0",sail:"rgba(208,228,255,0.93)",shirt:"#2a64c8"},skill:0.93,lineX:-170,x:-40, y:340,h:Math.PI/2},
+  {name:"Green", look:{stripe:"#3cc483",sail:"rgba(214,246,228,0.93)",shirt:"#1f9a60"},skill:0.955,lineX:20, y:300,x:110, h:-Math.PI/2},
+  {name:"Purple",look:{stripe:"#b07cf2",sail:"rgba(236,224,255,0.93)",shirt:"#7a4cc4"},skill:0.975,lineX:170,x:240,y:380,h:-Math.PI/2}
+];
+function makeAI(c){
+  const b=newBoat(c.x,c.y,c.h);b.u=18;b.look=c.look;
+  const rs=newRacerState();rs.name=c.name;
+  return {name:c.name,look:c.look,skill:c.skill,lineX:c.lineX,b,rs,tack:1,tackT:0,wp:0,lastNext:0,stuckT:0,unstickT:0,loiter:1,avoid:null,F:null};
+}
+const bearing=(b,t)=>Math.atan2(t.x-b.x,-(t.y-b.y));
+// If the straight line to the target runs through an obstacle, aim for a point just round its side instead.
+function detour(b,tgt,list){
+  const dx=tgt.x-b.x,dy=tgt.y-b.y,L=Math.hypot(dx,dy)||1,ux=dx/L,uy=dy/L,nx=-uy,ny=ux;
+  let best=null,bd=1e9;
+  for(const o of list){
+    const ox=o.x-b.x,oy=o.y-b.y,along=ox*ux+oy*uy;
+    if(along<-o.r||along>L+o.r)continue;
+    const perp=ox*nx+oy*ny,Rr=o.r+(o.kind==="island"?60:34);
+    if(Math.abs(perp)<Rr&&along<bd){bd=along;best={o,perp,Rr};}
+  }
+  if(!best)return tgt;
+  // go round whichever side makes the shorter trip
+  const o=best.o,k=best.Rr*1.2,p1={x:o.x-nx*k,y:o.y-ny*k},p2={x:o.x+nx*k,y:o.y+ny*k};
+  const cost=p=>Math.hypot(p.x-b.x,p.y-b.y)+Math.hypot(tgt.x-p.x,tgt.y-p.y);
+  return cost(p1)<=cost(p2)?p1:p2;
+}
+function stepAI(ai,dt){
+  const b=ai.b,rs=ai.rs,gun=S.race.gun,tl=gun-S.t,wf=S.wind.from,CH=0.8;
+  if(rs.next!==ai.lastNext){ai.wp=0;ai.lastNext=rs.next;}
+  // ---- where to go ----
+  let tgt,slow=false;
+  if(rs.finished){tgt={x:b.x+(b.x>=0?400:-400),y:b.y+60};slow=true;}
+  else if(!rs.started){
+    // north of the line without a proper start (over early, or went round an end): come back below it
+    if(rs.ocs||b.y<LINE.y-2||(Math.abs(b.x)>LINE.x2+20&&b.y<60))tgt={x:clamp(b.x,-200,200),y:150};
+    else if(tl>0){
+      const d=Math.hypot(b.x-ai.lineX,b.y),need=d/30+8;
+      if(tl>need){
+        // wait below the line on a slow reach, turning round by gybing (stern through the wind) so we never stall
+        const hold={x:ai.lineX,y:230};
+        if(Math.hypot(b.x-hold.x,b.y-hold.y)>140)tgt=hold;
+        else{
+          if((b.x-hold.x)*ai.loiter>80&&ai.gybeT<=0){ai.loiter=-ai.loiter;ai.gybeT=4;}
+          tgt={x:b.x+ai.loiter*300,y:hold.y};slow=true;
+        }
+      }else if(b.y<70&&tl>1.5){tgt={x:b.x+ai.loiter*300,y:b.y+20};slow=true;}   // early: run along the line
+      else tgt={x:ai.lineX,y:-250};
+    }else tgt={x:ai.lineX,y:-250};
+  }else if(rs.next<MARKS.length){
+    const m=MARKS[rs.next],aIn=m.gate+0.95,aOut=m.gate-0.95;
+    const wA={x:m.x+Math.cos(aIn)*58,y:m.y+Math.sin(aIn)*58},wB={x:m.x+Math.cos(aOut)*58,y:m.y+Math.sin(aOut)*58};
+    if(ai.wp===0&&Math.hypot(b.x-wA.x,b.y-wA.y)<45)ai.wp=1;
+    tgt=ai.wp?wB:wA;
+  }else if(b.y<LINE.y-2)tgt={x:clamp(b.x,-180,180),y:150};    // missed the line: come back below it
+  else tgt={x:clamp(ai.lineX*0.6,-150,150),y:-250};
+  // route round rocks, the island, moored boats, marks that are not ours, and boats that have stopped
+  const obs=S.obstacles.filter(o=>Math.hypot(o.x-b.x,o.y-b.y)<900);
+  for(const m of MARKS)if(Math.hypot(m.x-b.x,m.y-b.y)<600)obs.push({x:m.x,y:m.y,r:14,kind:"mark"});
+  for(const o of S.racers())if(o.b!==b&&Math.abs(o.b.u)<15&&Math.hypot(o.b.x-b.x,o.b.y-b.y)<300)obs.push({x:o.b.x,y:o.b.y,r:22,kind:"boat"});
+  tgt=detour(b,tgt,obs);
+  // ---- heading: straight there, or zig-zag if the target is upwind ----
+  const B=bearing(b,tgt),relB=wrap(B-wf);
+  let want;
+  ai.tackT+=dt;ai.gybeT=(ai.gybeT||0)-dt;
+  if(Math.abs(relB)<CH){
+    if(ai.tackT>7){if(ai.tack>0&&relB<-0.28){ai.tack=-1;ai.tackT=0;}else if(ai.tack<0&&relB>0.28){ai.tack=1;ai.tackT=0;}}
+    want=wf+ai.tack*CH;
+  }else{want=B;ai.tack=relB>0?1:-1;}
+  // give way to another boat by aiming behind it
+  if(ai.avoid){const o=ai.avoid,back=45+Math.max(0,o.u)*1.6;want=bearing(b,{x:o.x-Math.sin(o.h)*back,y:o.y+Math.cos(o.h)*back});
+    const rw=wrap(want-wf);if(Math.abs(rw)<CH)want=wf+(rw>=0?CH:-CH);}
+  // steer clear of rocks, the island, moored boats and marks that are dead ahead
+  const fx=Math.sin(b.h),fy=-Math.cos(b.h),rx=Math.cos(b.h),ry=Math.sin(b.h);
+  for(const o of obs){
+    const dx=o.x-b.x,dy=o.y-b.y,fwd=dx*fx+dy*fy;if(fwd<0||fwd>o.r+70)continue;
+    const lat=dx*rx+dy*ry;if(Math.abs(lat)<o.r+22){want=b.h-(lat>=0?1:-1)*0.7;break;}
+  }
+  if(ai.gybeT>2)want=wf+Math.PI;                       // bear away through dead downwind first
+  // unstick: if stopped for a while (in irons, or nosed into something), bear away onto a reach
+  if(Math.abs(b.u)<(slow?5:10))ai.stuckT+=dt;else ai.stuckT=0;
+  if(ai.stuckT>3){ai.unstickT=3;ai.stuckT=0;ai.tack=-ai.tack;}
+  if(ai.unstickT>0){
+    ai.unstickT-=dt;want=wf+ai.tack*1.7;
+    // push off: turn the bow by hand and shove away from whatever we are lying against
+    b.h=wrap(b.h+clamp(wrap(want-b.h),-0.9*dt,0.9*dt));
+    for(const o of obs){const dx=b.x-o.x,dy=b.y-o.y,d=Math.hypot(dx,dy);if(d<o.r+40){b.x+=dx/d*14*dt;b.y+=dy/d*14*dt;}}
+  }
+  const err=wrap(want-b.h);
+  b.rudder=approach(b.rudder,clamp(err*2.4,-1,1),3*dt);
+  // ---- sail and balance ----
+  const w=windAt(b.x,b.y);
+  let F=sailForces(b,w.speed,w.from);
+  const tgtSheet=bestBoom(Math.abs(F.awa))+(slow?0.55:0)+(Math.abs(b.heel)>0.38?0.3:0);
+  b.sheet=clamp(approach(b.sheet,tgtSheet,1.4*dt),K.sheetMin,K.sheetMax);
+  b.crew=approach(b.crew,clamp(b.crew-b.heel*1.2-b.hv*0.35,-1,1),0.9*dt);
+  F=sailForces(b,w.speed,w.from);F.fu*=ai.skill;
+  const px=b.x,py=b.y;
+  integrate(b,F,dt);
+  const kelp=kelpAt(b.x,b.y);if(kelp>0){b.u-=b.u*0.9*kelp*dt;b.v-=b.v*0.9*kelp*dt;}
+  if(stepHeel(b,F,dt)){b.heel=Math.sign(b.heel)*0.62;b.hv=0;}      // computer sailors never quite go over
+  b.boomDraw=approach(b.boomDraw,F.boom*F.lee,4.5*dt);
+  ai.F=F;
+  bounceOff(b);
+  trackRacer(rs,b,px,py,false);
+}
+// keep a boat out of rocks, the island, moored boats and marks; returns what it hit
+function bounceOff(b){
+  let hit=null;
+  for(const o of S.obstacles){
+    const dx=b.x-o.x,dy=b.y-o.y,d=Math.hypot(dx,dy),min=o.r+13;
+    if(d<min){const nx=dx/(d||1),ny=dy/(d||1);b.x=o.x+nx*min;b.y=o.y+ny*min;b.u*=-0.25;b.v=0;hit=o;}
+  }
+  if(S.mode==="race")for(const m of MARKS){
+    const dx=b.x-m.x,dy=b.y-m.y,d=Math.hypot(dx,dy),min=23;
+    if(d<min){const nx=dx/(d||1),ny=dy/(d||1);b.x=m.x+nx*min;b.y=m.y+ny*min;b.u*=-0.25;b.v=0;hit={kind:"mark"};}
+  }
+  return hit;
+}
+// ---- right of way ----
+// Port tack gives way to starboard tack. On the same tack, the windward boat (further upwind) keeps clear.
+const tackOf=b=>wrap(S.wind.from-b.h)>=0?"starboard":"port";
+function rightOfWay(A,B){
+  const ta=tackOf(A),tb=tackOf(B);
+  if(ta!==tb)return ta==="port"?{give:A,stand:B,why:"port tack gives way to starboard"}:{give:B,stand:A,why:"port tack gives way to starboard"};
+  const wx=Math.sin(S.wind.from),wy=-Math.cos(S.wind.from);
+  const pa=A.x*wx+A.y*wy,pb=B.x*wx+B.y*wy;
+  return pa>pb?{give:A,stand:B,why:"the windward boat keeps clear"}:{give:B,stand:A,why:"the windward boat keeps clear"};
+}
+const vel=b=>({x:Math.sin(b.h)*b.u+Math.cos(b.h)*b.v,y:-Math.cos(b.h)*b.u+Math.sin(b.h)*b.v});
+function closing(A,B){
+  const dx=B.x-A.x,dy=B.y-A.y,va=vel(A),vb=vel(B),vx=vb.x-va.x,vy=vb.y-va.y,v2=vx*vx+vy*vy;
+  if(v2<1)return null;
+  const t=-(dx*vx+dy*vy)/v2;if(t<0||t>4.5)return null;
+  const cx=dx+vx*t,cy=dy+vy*t,cpa=Math.hypot(cx,cy);
+  return cpa<42?{t,cpa}:null;
+}
+S.racers=()=>[{b:S.boat,rs:S.race,me:true,name:"You"},...S.ais.map(a=>({b:a.b,rs:a.rs,ai:a,name:a.name}))];
+function boatEncounters(dt){
+  const racers=S.racers();
+  for(const a of S.ais)a.avoid=null;
+  S.rowTip=null;
+  for(let i=0;i<racers.length;i++)for(let j=i+1;j<racers.length;j++){
+    const A=racers[i],B=racers[j];
+    if(A.rs.finished||B.rs.finished||A.b.capsized||B.b.capsized)continue;
+    const row=rightOfWay(A.b,B.b),giver=row.give===A.b?A:B,stander=giver===A?B:A;
+    const risk=closing(A.b,B.b);
+    if(risk){
+      if(giver.ai)giver.ai.avoid=stander.b;
+      if(A.me||B.me){
+        if(giver.me){S.rowTip="Give way to "+stander.name+": "+row.why+". Steer to pass behind them.";
+          if(!stander.ai.warnT||S.t-stander.ai.warnT>6){stander.ai.warnT=S.t;toast("Give way to "+stander.name+"!","bad");}}
+        else S.rowTip=giver.name+" must keep clear of you ("+row.why+"). Hold your course.";
+      }
+    }
+    // contact
+    const dx=B.b.x-A.b.x,dy=B.b.y-A.b.y,d=Math.hypot(dx,dy);
+    if(d<30){
+      const nx=dx/(d||1),ny=dy/(d||1),push=(30-d)/2;
+      A.b.x-=nx*push;A.b.y-=ny*push;B.b.x+=nx*push;B.b.y+=ny*push;A.b.u*=0.6;B.b.u*=0.6;
+      const key=A.name+B.name;S.fouls=S.fouls||{};
+      if(S.race.stage==="racing"&&(A.me||B.me)&&(!S.fouls[key]||S.t-S.fouls[key]>4)){
+        S.fouls[key]=S.t;giver.rs.pen+=10;
+        if(giver.me)toast("Foul! "+row.why[0].toUpperCase()+row.why.slice(1)+". +10 s","bad");
+        else if(stander.me)toast(giver.name+" fouled you and takes a 10 s penalty","good");
+      }
+    }
+  }
 }
 function stepOpen(b,dt,px,py){
   const o=S.open;
@@ -659,7 +1042,7 @@ function drawWater(){
   ctx.lineCap="round";ctx.strokeStyle="#cfe9ea";ctx.lineWidth=1.4;
   for(let i=Math.floor(x0/sc);i<=Math.ceil(x1/sc);i++)for(let j=Math.floor(y0/sc);j<=Math.ceil(y1/sc);j++){
     const h1=hash(i+91,j),h2=hash2(i,j+57);
-    const p=(S.t*0.11*rate+h1)%1,len=70+h2*110;
+    const p=(S.streakPh+h1)%1,len=70+h2*110;
     const cx=i*sc+h2*sc+tx*(p-0.5)*170,cy=j*sc+hash(j,i+5)*sc+ty*(p-0.5)*170;
     ctx.globalAlpha=Math.sin(p*Math.PI)*(0.05+0.06*h1);
     ctx.beginPath();ctx.moveTo(cx-tx*len/2,cy-ty*len/2);ctx.lineTo(cx+tx*len/2,cy+ty*len/2);ctx.stroke();
@@ -668,7 +1051,7 @@ function drawWater(){
   const cell=54;ctx.lineWidth=1.8;
   for(let i=Math.floor(x0/cell);i<=Math.ceil(x1/cell);i++)for(let j=Math.floor(y0/cell);j<=Math.ceil(y1/cell);j++){
     const h1=hash(i,j),h2=hash2(i,j);
-    const p=(S.t*0.22*rate+h1)%1;
+    const p=(S.wavePh+h1)%1;
     let cx=i*cell+h2*cell,cy=j*cell+hash(j,i)*cell;
     cx+=tx*(p-0.5)*46;cy+=ty*(p-0.5)*46;
     const g2=windAt(cx,cy).gust, len=(10+16*h1)*(1+g2);
@@ -698,81 +1081,187 @@ function drawHull(L,Wd){
   ctx.bezierCurveTo(-Wd*0.55,-L*0.05,-Wd*0.45,-L*0.35,0,-L/2);
   ctx.closePath();
 }
-function drawObstacles(){
+// ---------- 3D scenery ----------
+// Same oblique camera as the boats: height shifts things up-screen, the sun casts shadows down-right.
+const unit3=v=>{const l=Math.hypot(v[0],v[1],v[2])||1;return [v[0]/l,v[1]/l,v[2]/l];};
+const CAMV=unit3([-0.2,0.72,1]), LIGHTV=unit3([-0.55,-0.5,1]);
+const dot3=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+function newell(pts){
+  let nx=0,ny=0,nz=0;
+  for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length];
+    nx+=(p.y-q.y)*(p.z+q.z);ny+=(p.z-q.z)*(p.x+q.x);nz+=(p.x-q.x)*(p.y+q.y);}
+  return unit3([nx,ny,nz]);
+}
+function hull2(pts){ // convex hull of [x,y] points
+  pts=pts.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
+  const lo=[],up=[];
+  for(const p of pts){while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p);}
+  for(let i=pts.length-1;i>=0;i--){const p=pts[i];while(up.length>=2&&cr(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p);}
+  return lo.slice(0,-1).concat(up.slice(0,-1));
+}
+function rockPts(x,y,r,seed,n=9){
+  const pts=[];
+  for(let k=0;k<n;k++){const a=k/n*TAU,rr=r*(0.82+0.24*hash(seed,k));pts.push({x:x+Math.cos(a)*rr,y:y+Math.sin(a)*rr});}
+  return pts;
+}
+const rgb=(c,k)=>"rgb("+c.map(v=>Math.round(clamp(v*k,0,255))).join(",")+")";
+// an extruded, tapering block: sides facing the camera are shaded by the sun, then the top
+function drawPrism(base,cx,cy,z0,h,taper,side,top,shadow=true){
+  const bot=base.map(p=>({x:p.x,y:p.y,z:z0}));
+  const tp=base.map(p=>({x:cx+(p.x-cx)*taper,y:cy+(p.y-cy)*taper,z:z0+h}));
+  if(shadow){
+    const sh=hull2([...bot,...tp].map(p=>[p.x+p.z*SUN.x,p.y+p.z*SUN.y]));
+    ctx.fillStyle="rgba(0,12,22,0.26)";ctx.beginPath();sh.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.fill();
+  }
+  const n=base.length;
+  for(let i=0;i<n;i++){
+    const j=(i+1)%n,quad=[bot[i],bot[j],tp[j],tp[i]];
+    let nv=newell(quad);
+    const mx=(bot[i].x+bot[j].x)/2-cx,my=(bot[i].y+bot[j].y)/2-cy;
+    if(nv[0]*mx+nv[1]*my<0)nv=[-nv[0],-nv[1],-nv[2]];
+    if(dot3(nv,CAMV)<=0)continue;
+    ctx.fillStyle=rgb(side,0.55+0.5*Math.max(0,dot3(nv,LIGHTV)));poly(quad,toView);ctx.fill();
+  }
+  ctx.fillStyle=rgb(top,1);poly(tp,toView);ctx.fill();
+}
+function drawRock(o){
   const t=S.t;
-  for(const o of S.obstacles){
-    if(o.kind==="island"){
-      ctx.fillStyle="rgba(120,200,190,0.22)";ctx.beginPath();ctx.arc(o.x,o.y,o.r+38,0,TAU);ctx.fill();
-      ctx.fillStyle="#d9c58f";rockPath({x:o.x,y:o.y,r:o.r+6,seed:o.seed});ctx.fill();
-      ctx.fillStyle="#4f8a4a";rockPath({x:o.x+8,y:o.y-4,r:o.r-26,seed:o.seed+3});ctx.fill();
-      ctx.fillStyle="#3d7240";rockPath({x:o.x-30,y:o.y+20,r:o.r*0.4,seed:o.seed+5});ctx.fill();
-    }else if(o.kind==="rock"){
-      ctx.strokeStyle="rgba(230,245,242,"+(0.35+0.15*Math.sin(t*2+o.seed)).toFixed(2)+")";ctx.lineWidth=3;
-      rockPath({x:o.x,y:o.y,r:o.r+7,seed:o.seed+1});ctx.stroke();
-      ctx.fillStyle="#3b3f3a";rockPath(o);ctx.fill();
-      ctx.fillStyle="#585d55";rockPath({x:o.x-o.r*0.15,y:o.y-o.r*0.15,r:o.r*0.55,seed:o.seed+2});ctx.fill();
-    }else if(o.kind==="moored"||o.kind==="committee"){
-      // moored boats swing to point into the wind
-      ctx.save();ctx.translate(o.x,o.y);
-      const head=o.kind==="moored"?S.wind.from+0.08*Math.sin(t*0.7+o.seed):S.wind.from;
-      ctx.rotate(head);
-      const big=o.kind==="committee";
-      ctx.fillStyle="rgba(0,0,0,0.25)";ctx.save();ctx.translate(3,4);drawHull(big?60:50,big?24:18);ctx.fill();ctx.restore();
-      ctx.fillStyle=big?"#f1efe6":"#c9d6dc";drawHull(big?60:50,big?24:18);ctx.fill();
-      ctx.fillStyle=big?"#c4c9c2":"#9fb2bb";ctx.fillRect(-6,-4,12,16);
-      ctx.fillStyle="#2a3236";ctx.beginPath();ctx.arc(0,-8,2.6,0,TAU);ctx.fill();
-      ctx.restore();
-      if(big){ // orange flag streaming downwind
-        const tx=-Math.sin(S.wind.from),ty=Math.cos(S.wind.from);
-        const fx=o.x+Math.sin(S.wind.from)*-2,fy=o.y;
-        ctx.strokeStyle="#2a3236";ctx.lineWidth=2;ctx.beginPath();ctx.arc(fx,fy,2,0,TAU);ctx.stroke();
-        ctx.fillStyle="#ff7b30";ctx.beginPath();ctx.moveTo(fx,fy);
-        ctx.lineTo(fx+tx*22-ty*6+Math.sin(t*9)*2,fy+ty*22+tx*6);ctx.lineTo(fx+tx*22+ty*6+Math.sin(t*9)*2,fy+ty*22-tx*6);ctx.closePath();ctx.fill();
-      }
-    }else if(o.kind==="pin"){
-      drawBuoy(o.x,o.y,10,"#ff7b30",null);
-    }
+  ctx.strokeStyle="rgba(230,245,242,"+(0.35+0.15*Math.sin(t*2+o.seed)).toFixed(2)+")";ctx.lineWidth=3;
+  ctx.beginPath();rockPts(o.x,o.y,o.r+7,o.seed+1).forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.stroke();
+  const h=clamp(o.r*0.55,7,28);
+  drawPrism(rockPts(o.x,o.y,o.r,o.seed),o.x+o.r*0.08,o.y-o.r*0.05,0,h,0.55,[86,90,82],[112,116,104]);
+  // a second, smaller boulder on top of bigger rocks
+  if(o.r>30)drawPrism(rockPts(o.x-o.r*0.2,o.y+o.r*0.1,o.r*0.35,o.seed+9,7),o.x-o.r*0.2,o.y+o.r*0.1,h*0.75,h*0.5,0.5,[96,100,92],[124,128,116],false);
+}
+function drawIsland(o){
+  ctx.fillStyle="rgba(120,200,190,0.22)";ctx.beginPath();ctx.arc(o.x,o.y,o.r+38,0,TAU);ctx.fill();
+  drawPrism(rockPts(o.x,o.y,o.r+6,o.seed,14),o.x,o.y,0,3,0.97,[176,156,108],[222,201,146]);
+  const px=o.x+8,py=o.y-4,pr=o.r-26,hx=o.x-30,hy=o.y+20,hr=o.r*0.4;
+  drawPrism(rockPts(px,py,pr,o.seed+3,14),px,py,3,9,0.92,[128,110,74],[86,142,78],false);
+  drawPrism(rockPts(hx,hy,hr,o.seed+5,11),hx,hy,12,9,0.72,[104,104,66],[70,126,70],false);
+  // trees, drawn back to front
+  const trees=[];
+  for(let k=0;k<14;k++){
+    const a=hash(o.seed+k,31)*TAU,d=Math.sqrt(hash(k,o.seed+7))*(pr-22);
+    const x=px+Math.cos(a)*d,y=py+Math.sin(a)*d,onHill=Math.hypot(x-hx,y-hy)<hr*0.6;
+    trees.push({x,y,g:onHill?21:12,r:7+hash(k,5)*5});
+  }
+  trees.sort((p,q)=>p.y-q.y);
+  for(const tr of trees){
+    const top=tr.g+12+tr.r*0.4;
+    const sp=toView({x:tr.x+SUN.x*(top-tr.g),y:tr.y+SUN.y*(top-tr.g),z:tr.g});
+    ctx.fillStyle="rgba(0,20,10,0.25)";ctx.beginPath();ctx.ellipse(sp[0],sp[1],tr.r,tr.r*0.65,0,0,TAU);ctx.fill();
+    limb({x:tr.x,y:tr.y,z:tr.g},{x:tr.x,y:tr.y,z:top-tr.r*0.5},2.6,"#6b4b2a");
+    const c=toView({x:tr.x,y:tr.y,z:top});
+    ctx.fillStyle="#2f6a3a";ctx.beginPath();ctx.arc(c[0],c[1],tr.r,0,TAU);ctx.fill();
+    ctx.fillStyle="#4d8f4c";ctx.beginPath();ctx.arc(c[0]-tr.r*0.3,c[1]-tr.r*0.3,tr.r*0.6,0,TAU);ctx.fill();
   }
 }
-function drawBuoy(x,y,r,col,label){
-  const bob=Math.sin(S.t*2.2+x*0.01)*1.2;
-  ctx.fillStyle="rgba(230,245,242,0.25)";ctx.beginPath();ctx.arc(x,y,r+6+bob,0,TAU);ctx.fill();
-  ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();
-  ctx.fillStyle="rgba(255,255,255,0.45)";ctx.beginPath();ctx.arc(x-r*0.3,y-r*0.3,r*0.35,0,TAU);ctx.fill();
-  if(label){ctx.fillStyle="#1d1503";ctx.font="700 "+Math.round(r*1.1)+"px 'JetBrains Mono',monospace";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(label,x,y+1);}
+// a buoy: a short floating cylinder with an optional flag pole on top
+function drawBuoy3D(x,y,r,h,col,label,flag){
+  const bob=Math.sin(S.t*2.2+x*0.01)*1.2,z0=bob*0.6;
+  ctx.fillStyle="rgba(230,245,242,0.22)";ctx.beginPath();ctx.arc(x,y,r+6+bob,0,TAU);ctx.fill();
+  ctx.strokeStyle="rgba(0,12,22,0.25)";ctx.lineWidth=r*2;ctx.lineCap="round";
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+SUN.x*h,y+SUN.y*h);ctx.stroke();
+  const b0=toView({x,y,z:z0}),t0=toView({x,y,z:z0+h});
+  const c=col.match(/\w\w/g).map(v=>parseInt(v,16));
+  ctx.strokeStyle=rgb(c,0.72);ctx.lineWidth=r*2;ctx.beginPath();ctx.moveTo(b0[0],b0[1]);ctx.lineTo(t0[0],t0[1]);ctx.stroke();
+  ctx.fillStyle=col;ctx.beginPath();ctx.arc(t0[0],t0[1],r,0,TAU);ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,0.4)";ctx.beginPath();ctx.arc(t0[0]-r*0.35,t0[1]-r*0.35,r*0.32,0,TAU);ctx.fill();
+  if(flag){
+    const tz=z0+h+16,pt=toView({x,y,z:tz});
+    limb({x,y,z:z0+h},{x,y,z:tz},1.6,"#2a3236");
+    const tx=-Math.sin(S.wind.from),ty=Math.cos(S.wind.from),w=Math.sin(S.t*9+x)*1.5;
+    ctx.fillStyle=flag;ctx.beginPath();ctx.moveTo(pt[0],pt[1]);ctx.lineTo(pt[0]+tx*14+w,pt[1]+ty*14+3);ctx.lineTo(pt[0],pt[1]+7);ctx.closePath();ctx.fill();
+  }
+  if(label){ctx.fillStyle="#1d1503";ctx.font="700 "+Math.round(r*1.1)+"px 'JetBrains Mono',monospace";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(label,t0[0],t0[1]+1);}
+}
+// moored boats and the committee boat: real 3D hulls lying head to wind
+function drawMoored(o){
+  const big=o.kind==="committee";
+  if(!o.boat)o.boat={x:o.x,y:o.y,h:0,heel:0,u:0,v:0,rudder:0,sheet:0,boomDraw:0,crew:0,moored:true,
+    scale:big?1.35:1.1,mastH:big?40:52,cabin:big,flag:big?"#ff7b30":null,look:{stripe:big?"#2f6fd6":"#7f97a3"}};
+  const b=o.boat;
+  b.h=S.wind.from+(big?0:0.1*Math.sin(S.t*0.6+o.seed));
+  b.heel=0.03*Math.sin(S.t*1.3+o.seed);
+  if(!big){ // mooring buoy just upwind of the bow, with its line
+    const L=23*b.scale,mx=o.x+Math.sin(b.h)*(L+14),my=o.y-Math.cos(b.h)*(L+14);
+    ctx.strokeStyle="rgba(230,240,235,0.6)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(o.x+Math.sin(b.h)*L,o.y-Math.cos(b.h)*L);ctx.lineTo(mx,my);ctx.stroke();
+    ctx.fillStyle="#f2f0e8";ctx.beginPath();ctx.arc(mx,my-1.5,3.2,0,TAU);ctx.fill();
+  }
+  drawBoat3D(b,null);
+}
+function drawObstacle(o){
+  if(o.kind==="island")drawIsland(o);
+  else if(o.kind==="rock")drawRock(o);
+  else if(o.kind==="moored"||o.kind==="committee")drawMoored(o);
+  else if(o.kind==="pin")drawBuoy3D(o.x,o.y,8,20,"#ff7b30",null,"#ff7b30");
+}
+function drawNameTag(ai){
+  const b=ai.b,q=toView({x:b.x,y:b.y,z:68});
+  ctx.font="700 11px 'Atkinson Hyperlegible',sans-serif";ctx.textAlign="center";ctx.textBaseline="bottom";
+  ctx.lineWidth=3;ctx.strokeStyle="rgba(5,27,36,0.75)";ctx.lineJoin="round";ctx.strokeText(ai.name,q[0],q[1]);
+  ctx.fillStyle=ai.look.stripe;ctx.fillText(ai.name,q[0],q[1]);
+}
+// everything that stands up out of the water, sorted so nearer (further down-screen) things are drawn last
+function drawScene(){
+  const items=[];
+  const z=S.zoom,vw=W/z,vh=H/z,x0=S.cam.x-vw/2-260,y0=S.cam.y-vh/2-260,x1=S.cam.x+vw/2+260,y1=S.cam.y+vh/2+260;
+  const near=(x,y)=>x>x0&&x<x1&&y>y0&&y<y1;
+  for(const o of S.obstacles)if(near(o.x,o.y))items.push({y:o.y,draw:()=>drawObstacle(o)});
+  if(S.mode==="race"){
+    const r=S.race;
+    MARKS.forEach((m,i)=>{if(near(m.x,m.y))items.push({y:m.y,draw:()=>drawBuoy3D(m.x,m.y,12,15,i<r.next?"#8c9b9c":"#ffd447",String(i+1),null)});});
+    for(const ai of S.ais)if(near(ai.b.x,ai.b.y))items.push({y:ai.b.y,draw:()=>drawBoat(ai.b,ai.F),tag:ai});
+  }
+  items.push({y:S.boat.y,draw:()=>drawBoat()});
+  items.sort((a,b)=>a.y-b.y).forEach(it=>it.draw());
+  for(const it of items)if(it.tag)drawNameTag(it.tag);
 }
 function drawCourse(){
   const r=S.race;
   // start / finish line
   ctx.save();
-  const active=r.stage==="pre"||r.next>=MARKS.length;
+  const active=!r.started||r.next>=MARKS.length;
   ctx.strokeStyle=active?"rgba(255,212,71,0.9)":"rgba(230,245,242,0.35)";ctx.lineWidth=2.5;ctx.setLineDash([14,10]);
   ctx.beginPath();ctx.moveTo(LINE.x1,LINE.y);ctx.lineTo(LINE.x2,LINE.y);ctx.stroke();ctx.restore();
   if(active){
     ctx.fillStyle="rgba(255,212,71,0.9)";ctx.font="700 15px 'Atkinson Hyperlegible',sans-serif";ctx.textAlign="center";ctx.textBaseline="bottom";
-    ctx.fillText(r.stage==="pre"?"START  ▲  cross going upwind":"FINISH  ▲  cross going upwind",0,LINE.y-10);
+    ctx.fillText(!r.started?(r.stage==="pre"?"START  ▲  cross going upwind after the gun":"START  ▲  cross going upwind"):"FINISH  ▲  cross going upwind",0,LINE.y-10);
   }
   MARKS.forEach((m,i)=>{
-    const isNext=r.stage!=="done"&&i===r.next&&r.stage==="racing";
+    const isNext=r.stage!=="done"&&i===r.next&&r.started;
     if(isNext){
-      const pulse=0.5+0.5*Math.sin(S.t*4);
-      ctx.strokeStyle="rgba(255,212,71,"+(0.25+0.3*pulse).toFixed(2)+")";ctx.lineWidth=2;
-      ctx.beginPath();ctx.arc(m.x,m.y,ROUND_R,0,TAU);ctx.setLineDash([6,10]);ctx.stroke();ctx.setLineDash([]);
-      // rounding direction arrow (counter-clockwise on screen = mark on your left)
-      ctx.strokeStyle="rgba(255,212,71,0.85)";ctx.lineWidth=3;
-      const a0=S.t*0.6%TAU;
-      ctx.beginPath();ctx.arc(m.x,m.y,62,a0,a0-2.2,true);ctx.stroke();
-      const ae=a0-2.2,hx=m.x+Math.cos(ae)*62,hy=m.y+Math.sin(ae)*62,dx=Math.sin(ae),dy=-Math.cos(ae);
-      ctx.fillStyle="rgba(255,212,71,0.95)";ctx.beginPath();
-      ctx.moveTo(hx+dx*10,hy+dy*10);ctx.lineTo(hx-dx*2+Math.cos(ae)*7,hy-dy*2+Math.sin(ae)*7);ctx.lineTo(hx-dx*2-Math.cos(ae)*7,hy-dy*2-Math.sin(ae)*7);ctx.closePath();ctx.fill();
-      // progress
-      const prog=clamp(-r.sweep/ROUND_NEED,0,1);
-      if(prog>0){ctx.strokeStyle="#71e3a6";ctx.lineWidth=5;ctx.beginPath();ctx.arc(m.x,m.y,30,-Math.PI/2,-Math.PI/2-prog*TAU,true);ctx.stroke();}
-      ctx.fillStyle="#ffd447";ctx.font="700 14px 'Atkinson Hyperlegible',sans-serif";ctx.textAlign="center";ctx.textBaseline="top";
-      ctx.fillText(m.name.toUpperCase()+" · keep it on your left",m.x,m.y+76);
+      drawRoundingGuide(m);
     }
-    drawBuoy(m.x,m.y,13,i<r.next?"#8c9b9c":"#ffd447",String(i+1));
   });
+}
+// The path round the next mark: a curved arrow from the side you arrive on, round the outside,
+// to the side you leave from, plus the gate line you must cross.
+function drawRoundingGuide(m){
+  const span=((m.thIn-m.thOut)%TAU+TAU)%TAU;        // anticlockwise (on screen) from arrival to departure
+  const a0=m.thIn-0.35, a1=m.thIn-span+0.35, RA=78;
+  // gate
+  const gx=Math.cos(m.gate),gy=Math.sin(m.gate);
+  ctx.strokeStyle="rgba(255,212,71,0.5)";ctx.lineWidth=2;ctx.setLineDash([8,8]);
+  ctx.beginPath();ctx.moveTo(m.x+gx*24,m.y+gy*24);ctx.lineTo(m.x+gx*ROUND_R,m.y+gy*ROUND_R);ctx.stroke();ctx.setLineDash([]);
+  // arrow body with dashes flowing in the direction of travel
+  ctx.lineCap="round";
+  ctx.strokeStyle="rgba(8,30,40,0.55)";ctx.lineWidth=8;
+  ctx.beginPath();ctx.arc(m.x,m.y,RA,a0,a1,true);ctx.stroke();
+  ctx.strokeStyle="#ffd447";ctx.lineWidth=4;ctx.setLineDash([14,9]);ctx.lineDashOffset=-S.t*28;
+  ctx.beginPath();ctx.arc(m.x,m.y,RA,a0,a1,true);ctx.stroke();ctx.setLineDash([]);ctx.lineDashOffset=0;
+  // arrowhead: heading of travel when going anticlockwise is (sin a, -cos a)
+  const hx=m.x+Math.cos(a1)*RA,hy=m.y+Math.sin(a1)*RA,tx=Math.sin(a1),ty=-Math.cos(a1),nx=Math.cos(a1),ny=Math.sin(a1);
+  ctx.fillStyle="#ffd447";ctx.beginPath();
+  ctx.moveTo(hx+tx*16,hy+ty*16);ctx.lineTo(hx-tx*3+nx*10,hy-ty*3+ny*10);ctx.lineTo(hx-tx*3-nx*10,hy-ty*3-ny*10);ctx.closePath();ctx.fill();
+  // label on the inside of the turn, away from the arrow
+  const lx=m.x-gx*120,ly=m.y-gy*120;
+  ctx.font="700 14px 'Atkinson Hyperlegible',sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.lineWidth=4;ctx.strokeStyle="rgba(8,30,40,0.7)";ctx.lineJoin="round";
+  ctx.strokeText(m.name.toUpperCase(),lx,ly-9);ctx.strokeText("keep it on your left",lx,ly+9);
+  ctx.fillStyle="#ffd447";ctx.fillText(m.name.toUpperCase(),lx,ly-9);ctx.fillText("keep it on your left",lx,ly+9);
 }
 // Things fixed to the sea bed: chart grid, lobster-pot floats and kelp beds.
 // Waves drift with the wind, so these are what show the boat's real motion.
@@ -792,26 +1281,89 @@ function drawFixedRefs(){
     ctx.fillText((gy>=0?"N":"S")+Math.abs(gy)+" "+(gx>=0?"E":"W")+Math.abs(gx),x+6,y+5);
   }
   // kelp beds
-  const KC=700;
+  const KC=KELP_CELL;
   for(let i=Math.floor(x0/KC)-1;i<=Math.ceil(x1/KC);i++)for(let j=Math.floor(y0/KC)-1;j<=Math.ceil(y1/KC);j++){
-    if(hash(i+300,j+11)>0.35)continue;
-    const cx=i*KC+hash(i,j+40)*KC,cy=j*KC+hash2(i+8,j)*KC;
-    for(let k=0;k<7;k++){
-      const ox=(hash(i*7+k,j)-0.5)*120,oy=(hash2(i,j*7+k)-0.5)*90,rr=14+hash(k,i+j)*26;
-      ctx.fillStyle="rgba(92,110,52,"+(0.22+0.12*hash(k+3,j)).toFixed(2)+")";
-      ctx.beginPath();ctx.ellipse(cx+ox,cy+oy,rr,rr*0.6,hash(k,j)*3,0,TAU);ctx.fill();
-    }
+    const bd=kelpBed(i,j);if(bd)drawKelpBed(bd.cx,bd.cy,bd.seed);
   }
   // lobster-pot floats: bob in place, never drift
-  const PC=230,cols=["#ff5a4f","#ffd447","#f4f1e8","#4fc3ff"];
+  const PC=340,cols=["#ff5a4f","#ffd447","#f4f1e8","#4fc3ff"];
   for(let i=Math.floor(x0/PC);i<=Math.ceil(x1/PC);i++)for(let j=Math.floor(y0/PC);j<=Math.ceil(y1/PC);j++){
-    if(hash(i+50,j+70)>0.55)continue;
+    if(hash(i+50,j+70)>0.3)continue;
     const x=i*PC+hash(i+5,j)*PC*0.8,y=j*PC+hash2(i,j+5)*PC*0.8;
-    const ph=S.t*2+hash(i,j)*TAU,ring=7+3*Math.sin(ph);
+    const ph=S.t*2+hash(i,j)*TAU,ring=7+3*Math.sin(ph),bz=1.5+0.8*Math.sin(ph),col=cols[Math.floor(hash2(i+1,j+1)*4)];
     ctx.strokeStyle="rgba(230,245,242,0.30)";ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(x,y,ring,0,TAU);ctx.stroke();
-    ctx.fillStyle="rgba(0,10,20,0.3)";ctx.beginPath();ctx.arc(x+1.5,y+2,4.5,0,TAU);ctx.fill();
-    ctx.fillStyle=cols[Math.floor(hash2(i+1,j+1)*4)];ctx.beginPath();ctx.arc(x,y,4.5,0,TAU);ctx.fill();
-    ctx.strokeStyle="#2a3236";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-7);ctx.stroke();
+    // shadow of the ball and its marker stick
+    ctx.fillStyle="rgba(0,10,20,0.28)";ctx.beginPath();ctx.arc(x+SUN.x*3,y+SUN.y*3,4.5,0,TAU);ctx.fill();
+    ctx.strokeStyle="rgba(0,10,20,0.28)";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+SUN.x*15,y+SUN.y*15);ctx.stroke();
+    limb({x,y,z:bz},{x,y,z:bz+14},1.5,"#2a3236");
+    const fp=toView({x,y,z:bz+14});ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(fp[0],fp[1]);ctx.lineTo(fp[0]+6,fp[1]+2);ctx.lineTo(fp[0],fp[1]+4.5);ctx.closePath();ctx.fill();
+    const bp=toView({x,y,z:bz});ctx.fillStyle=col;ctx.beginPath();ctx.arc(bp[0],bp[1],4.5,0,TAU);ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.4)";ctx.beginPath();ctx.arc(bp[0]-1.5,bp[1]-1.5,1.5,0,TAU);ctx.fill();
+  }
+}
+// Kelp beds live on a fixed grid of cells; ~35% of cells hold one.
+const KELP_CELL=700;
+function kelpBed(i,j){
+  if(hash(i+300,j+11)>0.35)return null;
+  const cx=i*KELP_CELL+hash(i,j+40)*KELP_CELL,cy=j*KELP_CELL+hash2(i+8,j)*KELP_CELL,seed=i*31+j*17;
+  const flow=hash(seed,1)*TAU;
+  // the fronds stream downstream from the plants, so the thick part sits a little downstream of the centre
+  const mx=cx+Math.cos(flow)*35,my=cy+Math.sin(flow)*35;
+  if(Math.hypot(mx,my-150)<480)return null;   // keep the starting area clear
+  return {cx,cy,seed,mx,my};
+}
+// 0 = clear water, 1 = right in the thick of a bed
+function kelpAt(x,y){
+  const i0=Math.floor(x/KELP_CELL),j0=Math.floor(y/KELP_CELL);let k=0;
+  for(let i=i0-1;i<=i0+1;i++)for(let j=j0-1;j<=j0+1;j++){
+    const bd=kelpBed(i,j);if(!bd)continue;
+    const d=Math.hypot(x-bd.mx,y-bd.my)/110;
+    if(d<1)k=Math.max(k,Math.min(1,(1-d)*1.8));
+  }
+  return k;
+}
+// A kelp bed: plants anchored to the sea bed, their long fronds floating up and lying along the
+// surface, all streaming the same way in the tidal current and swaying slightly.
+function drawKelpBed(cx,cy,seed){
+  const flow=hash(seed,1)*TAU, fx=Math.cos(flow), fy=Math.sin(flow), nx=-fy, ny=fx;
+  // murky underwater shadow of the bed
+  const g=ctx.createRadialGradient(cx,cy,0,cx,cy,110);
+  g.addColorStop(0,"rgba(40,52,20,0.32)");g.addColorStop(1,"rgba(40,52,20,0)");
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,110,0,TAU);ctx.fill();
+  const plants=6+Math.floor(hash(seed,2)*4);
+  ctx.lineCap="round";ctx.lineJoin="round";
+  for(let p=0;p<plants;p++){
+    const hx=cx+(hash(seed+p,3)-0.5)*130-fx*40, hy=cy+(hash2(seed,p+4)-0.5)*100-fy*40;
+    const fronds=3+Math.floor(hash(seed+p,5)*3);
+    for(let f=0;f<fronds;f++){
+      const len=70+hash(seed+p*7,f+6)*80, spread=(hash2(seed+p,f+7)-0.5)*0.7, ph=hash(seed+p,f+8)*TAU;
+      const dx=Math.cos(flow+spread), dy=Math.sin(flow+spread);
+      const pts=[];
+      const n=9;
+      for(let k=0;k<=n;k++){
+        const t=k/n, w=Math.sin(t*5+S.t*1.3+ph)*6*t+Math.sin(S.t*0.6+ph)*4*t*t;
+        pts.push([hx+dx*len*t+nx*w, hy+dy*len*t+ny*w]);
+      }
+      // stipe (stem): thin and dark where it rises from deeper water
+      ctx.strokeStyle="rgba(78,66,24,0.55)";ctx.lineWidth=2.2;
+      ctx.beginPath();pts.forEach((q,k)=>k?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.stroke();
+      // blades: long ribbon leaves trailing off the stem
+      for(let k=3;k<n;k+=1){
+        const q=pts[k], r=pts[k+1], ax=r[0]-q[0], ay=r[1]-q[1], al=Math.hypot(ax,ay)||1;
+        const side=(k%2?1:-1), bl=10+6*hash(seed+k,f), sway=Math.sin(S.t*1.7+ph+k)*0.25;
+        const ang=Math.atan2(ay,ax)+side*(0.5+sway);
+        ctx.fillStyle="rgba(160,126,44,0.62)";
+        ctx.beginPath();ctx.ellipse(q[0]+Math.cos(ang)*bl*0.5,q[1]+Math.sin(ang)*bl*0.5,bl*0.55,2.2,ang,0,TAU);ctx.fill();
+      }
+      // gas bladders that keep the fronds floating
+      for(let k=2;k<n;k+=3){
+        const q=pts[k];
+        ctx.fillStyle="rgba(196,160,64,0.85)";ctx.beginPath();ctx.arc(q[0],q[1],2.1,0,TAU);ctx.fill();
+      }
+      // frond tip lying on the surface
+      const tq=pts[n];
+      ctx.fillStyle="rgba(176,140,52,0.7)";ctx.beginPath();ctx.ellipse(tq[0],tq[1],6,2.4,Math.atan2(dy,dx),0,TAU);ctx.fill();
+    }
   }
 }
 function drawTrail(){
@@ -840,83 +1392,318 @@ function drawMotion(){
   for(let k=1;k<=6;k++){const t=k*0.5;ctx.globalAlpha=1-k/7;ctx.beginPath();ctx.arc(b.x+vx*t,b.y+vy*t,2.4,0,TAU);ctx.fill();}
   ctx.globalAlpha=1;
 }
-function drawBoat(){
-  const b=S.boat,F=S.F;
-  ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.h);
-  const L=46,Wd=18;
+const PLAYER_LOOK={stripe:"#ff7b30",sail:"rgba(255,255,255,0.9)",shirt:"#d23b31"};
+function drawBoat(b=S.boat,F=S.F){
   // bow wave
   const sp=Math.abs(b.u);
-  if(sp>8){
+  if(sp>8&&!b.capsized){
+    ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.h);const L=46;
     ctx.strokeStyle="rgba(235,248,246,"+Math.min(0.6,sp/120).toFixed(2)+")";ctx.lineWidth=2;
     ctx.beginPath();ctx.moveTo(-10-sp*0.06,-6);ctx.quadraticCurveTo(-5,-L/2+2,0,-L/2-2);ctx.quadraticCurveTo(5,-L/2+2,10+sp*0.06,-6);ctx.stroke();
+    ctx.restore();
   }
-  if(b.capsized){drawCapsized(b,L,Wd);ctx.restore();return;}
-  // shadow on the low side shows heel
-  ctx.save();ctx.translate(3+Math.sin(b.heel)*12,4);ctx.fillStyle="rgba(0,10,20,0.32)";drawHull(L,Wd);ctx.fill();ctx.restore();
-  ctx.fillStyle="#f4f1e8";drawHull(L,Wd);ctx.fill();
-  ctx.save();ctx.clip();ctx.fillStyle="rgba(0,0,0,0.12)";ctx.globalAlpha=Math.min(1,Math.abs(b.heel)*3);ctx.fillRect(b.heel>0?2:-Wd,-L,Wd,2*L);ctx.restore();
-  ctx.strokeStyle="#ff7b30";ctx.lineWidth=2;drawHull(L-3,Wd-3);ctx.stroke();
-  // cockpit
-  ctx.fillStyle="#cdbf9e";ctx.beginPath();ctx.moveTo(-6,0);ctx.lineTo(6,0);ctx.lineTo(5.5,19);ctx.lineTo(-5.5,19);ctx.closePath();ctx.fill();
-  // rudder + tiller
-  const ra=b.rudder*0.6;
-  ctx.strokeStyle="#2b3a40";ctx.lineWidth=3;ctx.lineCap="round";
-  ctx.beginPath();ctx.moveTo(0,L/2);ctx.lineTo(Math.sin(ra)*11,L/2+Math.cos(ra)*11);ctx.stroke();
-  ctx.strokeStyle="#8a5a2b";ctx.lineWidth=2.2;
-  ctx.beginPath();ctx.moveTo(0,L/2);ctx.lineTo(-Math.sin(ra)*15,L/2-Math.cos(ra)*15);ctx.stroke();
-  // sail along the boom
-  const mx=0,my=-8,bl=27,ba=b.boomDraw;
-  const dx=Math.sin(ba),dy=Math.cos(ba),ex=mx+dx*bl,ey=my+dy*bl;
-  const side=ba>=0?1:-1, nx=side*dy, ny=-side*dx;
+  drawBoat3D(b,F);
+}
+// ---------- oblique 3D boat ----------
+// The camera looks down at a slight angle, so height (z) shows as a shift up-screen,
+// and the sun casts shadows down-right. Heel rolls every point about the boat's centreline.
+const VIEW={x:0.2,y:-0.72}, SUN={x:0.55,y:0.5};
+const SEA=[14,77,95];
+const HULL=[[23,0],[19,4.2],[14,6.8],[7,8.6],[0,9.2],[-8,9.1],[-16,8.4],[-23,7.2]]; // [forward, half-width]
+function boatFrame(b){
+  const ch=Math.cos(b.heel),sh=Math.sin(b.heel),sc=b.scale||1;
+  const fx=Math.sin(b.h),fy=-Math.cos(b.h),rx=Math.cos(b.h),ry=Math.sin(b.h);
+  const lift=2.5*sh*sh;                                   // a boat on its side floats a little higher
+  // local point: a = forward, s = to starboard, z = up. Returns world position + height.
+  return (a,sd,z)=>{
+    a*=sc;sd*=sc;z*=sc;
+    const s2=sd*ch+z*sh, z2=-sd*sh+z*ch+lift*sc;
+    return {x:b.x+a*fx+s2*rx,y:b.y+a*fy+s2*ry,z:z2};
+  };
+}
+const toView=p=>[p.x+p.z*VIEW.x,p.y+p.z*VIEW.y];
+const toShadow=p=>[p.x+Math.max(0,p.z)*SUN.x,p.y+Math.max(0,p.z)*SUN.y];
+function hullRing(P,z,scale){
+  const pts=[];
+  for(const [a,w] of HULL)pts.push(P(a,w*scale,z));
+  for(let i=HULL.length-1;i>=0;i--){const [a,w]=HULL[i];if(w>0)pts.push(P(a,-w*scale,z));}
+  return pts;
+}
+function poly(pts,proj){ctx.beginPath();pts.forEach((p,i)=>{const q=proj(p);i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});ctx.closePath();}
+// mixes a colour towards the sea colour for parts below the waterline
+function wet(rgb,z){const k=clamp(-z/7,0,0.75);return "rgb("+rgb.map((v,i)=>Math.round(v+(SEA[i]-v)*k)).join(",")+")";}
+// Part of a polygon that is under the water (z<0): drawn over with sea colour, with foam on the waterline.
+function submerge(pts){
+  const out=[];
+  for(let i=0;i<pts.length;i++){
+    const p=pts[i],q=pts[(i+1)%pts.length],pin=p.z<0,qin=q.z<0;
+    if(pin)out.push(p);
+    if(pin!==qin){const t=p.z/(p.z-q.z);out.push({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t,z:0,wl:true});}
+  }
+  if(out.length<3)return;
+  ctx.fillStyle="rgba(12,70,88,0.86)";poly(out,toView);ctx.fill();
+  const wl=out.filter(p=>p.wl);
+  if(wl.length===2){const a=toView(wl[0]),c=toView(wl[1]);ctx.strokeStyle="rgba(235,248,246,0.55)";ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(c[0],c[1]);ctx.stroke();}
+}
+function boardTip(b){return boatFrame(b)(2,0,-17);}
+function swimmerPos(b){
+  const c=b.cap,f={x:Math.sin(b.h),y:-Math.cos(b.h)},r={x:Math.cos(b.h),y:Math.sin(b.h)},sd=c.side;
+  const land={x:b.x-f.x*8+r.x*sd*20,y:b.y-f.y*8+r.y*sd*20};
+  const ctl={x:b.x-f.x*42,y:b.y-f.y*42};
+  const tip=boardTip(b),end={x:tip.x-r.x*sd*5,y:tip.y-r.y*sd*5};
+  const t=c.swim*c.swim*(3-2*c.swim),u=1-t;
+  return {x:u*u*land.x+2*u*t*ctl.x+t*t*end.x,y:u*u*land.y+2*u*t*ctl.y+t*t*end.y,z:0,land,end};
+}
+function sailPoints(b,F,P){
+  const ba=b.boomDraw,bl=27,mastA=8,zb=8.5,H=58;
+  const tack=P(mastA,0,zb),head=P(mastA,0,H);
+  const clew=P(mastA-Math.cos(ba)*bl,Math.sin(ba)*bl,zb);
+  const side=ba>=0?1:-1;
   const luff=F&&(F.alpha<0.04||Math.abs(F.awa)<0.35);
-  ctx.lineWidth=3.2;ctx.strokeStyle="#ffffff";ctx.fillStyle="rgba(255,255,255,0.28)";
-  ctx.beginPath();ctx.moveTo(mx,my);
-  if(luff){
-    const n=6;for(let k=1;k<=n;k++){const s=k/n,w=Math.sin(S.t*28+k*1.9)*3.2*Math.sin(s*Math.PI);ctx.lineTo(mx+dx*bl*s+nx*w,my+dy*bl*s+ny*w);}
-  }else{
-    const depth=6+Math.min(4,(F?F.aws:0)*0.02);
-    ctx.quadraticCurveTo(mx+dx*bl*0.45+nx*depth,my+dy*bl*0.45+ny*depth,ex,ey);
+  const depth=luff?0:5+Math.min(4,(F?F.aws:0)*0.02);
+  // belly: a point part-way along the boom, pushed to leeward, at about a third of the mast height
+  const ma=mastA-Math.cos(ba)*bl*0.45, ms=Math.sin(ba)*bl*0.45;
+  const belly=P(ma+Math.sin(ba)*side*depth, ms+Math.cos(ba)*side*depth, zb+2);   // pushed out to leeward
+  const leech=[];
+  const n=7;
+  for(let k=1;k<n;k++){
+    const t=k/n, w=luff?Math.sin(S.t*28+k*1.9)*3.2*Math.sin(t*Math.PI):0;
+    const a=mastA-Math.cos(ba)*bl*(1-t), sd=Math.sin(ba)*bl*(1-t);
+    leech.push(P(a+Math.sin(ba)*w,sd+Math.cos(ba)*w,zb+(H-zb)*t));
   }
-  ctx.stroke();if(!luff){ctx.lineTo(mx,my);ctx.fill();}
-  // boom
-  ctx.strokeStyle="#3a4a50";ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(ex,ey);ctx.stroke();
-  // mast
-  ctx.fillStyle="#2b3a40";ctx.beginPath();ctx.arc(mx,my,2.6,0,TAU);ctx.fill();
-  // crew: sits at the centreline (0) or hikes out over either side (±1)
-  const cx=b.crew*(Wd*0.5+2),cy=10;
-  ctx.fillStyle="#e8463c";ctx.beginPath();ctx.ellipse(cx,cy,5,4,0,0,TAU);ctx.fill();
-  ctx.fillStyle="#e6b98f";ctx.beginPath();ctx.arc(cx+b.crew*2.5,cy-1,2.8,0,TAU);ctx.fill();
-  ctx.restore();
+  return {tack,head,clew,belly,leech,luff};
+}
+function drawSail(sp,proj,fill,stroke){
+  const q=p=>proj(p);
+  ctx.beginPath();
+  let a=q(sp.tack);ctx.moveTo(a[0],a[1]);
+  const c=q(sp.clew),bl=q(sp.belly);
+  ctx.quadraticCurveTo(bl[0],bl[1],c[0],c[1]);       // foot, curved by the belly
+  for(const p of sp.leech){const r=q(p);ctx.lineTo(r[0],r[1]);}
+  const h=q(sp.head);ctx.lineTo(h[0],h[1]);
+  ctx.closePath();
+  ctx.fillStyle=fill;ctx.fill();
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1.4;ctx.lineJoin="round";ctx.stroke();}
+}
+function drawBoat3D(b,F){
+  const P=boatFrame(b),ah=Math.abs(b.heel),look=b.look||PLAYER_LOOK;
+  const deck=hullRing(P,5,1), water=hullRing(P,0,0.86), keel=hullRing(P,-4,0.42);
+  const sp=sailPoints(b,F,P);
+  const mastBase=P(8,0,5),mastTop=P(8,0,b.mastH||60);
+  const ra=b.rudder*0.6;
+  const over=ah>1.0;                                    // mast and sail are down near the water
+  // shadows on the water
+  ctx.fillStyle="rgba(0,12,22,0.30)";
+  poly(deck,toShadow);ctx.fill();
+  if(!over){
+    if(!b.moored)drawSail(sp,toShadow,"rgba(0,12,22,0.22)",null);
+    ctx.strokeStyle="rgba(0,12,22,0.30)";ctx.lineWidth=2;ctx.beginPath();
+    let s0=toShadow(mastBase),s1=toShadow(mastTop);ctx.moveTo(s0[0],s0[1]);ctx.lineTo(s1[0],s1[1]);ctx.stroke();
+  }
+  // rudder blade in the water behind the transom
+  const rp=P(-23,0,1),rq=P(-23-Math.cos(ra)*11,-Math.sin(ra)*11,1);
+  ctx.strokeStyle="#2b3a40";ctx.lineWidth=3;ctx.lineCap="round";
+  let r0=toView(rp),r1=toView(rq);ctx.beginPath();ctx.moveTo(r0[0],r0[1]);ctx.lineTo(r1[0],r1[1]);ctx.stroke();
+  if(over)drawRig(b,sp,mastBase,mastTop,F,ah,look);
+  // Hull: sides, bottom, centreboard and deck are drawn lowest-first so the right faces show
+  // whether she is upright or lying on her side.
+  const items=[];
+  // direction towards the camera (anything moved along it projects to the same screen point) and the sun
+  const CAM=[-0.2,0.72,1], LIGHT=[-0.55,-0.5,1];
+  const nrm=v=>{const l=Math.hypot(v[0],v[1],v[2])||1;return [v[0]/l,v[1]/l,v[2]/l];};
+  const cam=nrm(CAM), light=nrm(LIGHT), ctr=P(0,0,1);
+  const facing=(pts)=>{
+    let nx=0,ny=0,nz=0;                                   // Newell's method: robust polygon normal
+    for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length];
+      nx+=(p.y-q.y)*(p.z+q.z);ny+=(p.z-q.z)*(p.x+q.x);nz+=(p.x-q.x)*(p.y+q.y);}
+    const c=pts.reduce((t,p)=>[t[0]+p.x/pts.length,t[1]+p.y/pts.length,t[2]+p.z/pts.length],[0,0,0]);
+    let n=nrm([nx,ny,nz]);
+    if(n[0]*(c[0]-ctr.x)+n[1]*(c[1]-ctr.y)+n[2]*(c[2]-ctr.z)<0)n=[-n[0],-n[1],-n[2]];
+    return {n,z:c[2],vis:n[0]*cam[0]+n[1]*cam[1]+n[2]*cam[2]};
+  };
+  const panel=(pts,rgb,twoSided)=>{
+    const f=facing(pts);
+    if(!twoSided&&f.vis<=0)return;
+    const lit=Math.max(0,f.n[0]*light[0]+f.n[1]*light[1]+f.n[2]*light[2]);
+    const col=rgb.map(v=>Math.round(v*(0.58+0.42*lit)));
+    items.push({z:f.z,draw:()=>{ctx.fillStyle="rgb("+col.join(",")+")";poly(pts,toView);ctx.fill();submerge(pts);}});
+  };
+  const n=deck.length;
+  for(let i=0;i<n;i++){
+    const j=(i+1)%n;
+    panel([deck[i],deck[j],water[j],water[i]],[240,236,226]);
+    panel([water[i],water[j],keel[j],keel[i]],[196,74,58]);      // antifouling red below the waterline
+  }
+  panel(keel,[178,64,50]);                                          // flat bottom
+  if(ah>0.45)panel([P(6,0,-2),P(-2,0,-2),P(-1,0,-17),P(4,0,-17)],[43,58,64],true);  // centreboard
+  if(b.cabin){ // a small wheelhouse
+    const c0=[P(10,-5.5,5),P(10,5.5,5),P(-8,5.5,5),P(-8,-5.5,5)],c1=[P(9,-5,12),P(9,5,12),P(-7,5,12),P(-7,-5,12)];
+    for(let i=0;i<4;i++){const j=(i+1)%4;panel([c0[i],c0[j],c1[j],c1[i]],[214,220,216]);}
+    const topF=facing(c1);
+    items.push({z:12,draw:()=>{ctx.fillStyle="#eef0ea";poly(c1,toView);ctx.fill();
+      ctx.fillStyle="rgba(40,70,90,0.8)";poly([P(9.2,-4,10.5),P(9.2,4,10.5),P(9.6,4,8),P(9.6,-4,8)],toView);ctx.fill();}});
+  }
+  const deckF=facing(deck);
+  if(deckF.vis>0)items.push({z:deckF.z,draw:()=>{
+    ctx.strokeStyle=look.stripe;ctx.lineWidth=1.6;poly(hullRing(P,3.6,0.97),toView);ctx.stroke();
+    ctx.fillStyle="#f6f3ea";poly(deck,toView);ctx.fill();
+    ctx.strokeStyle="rgba(40,50,55,0.35)";ctx.lineWidth=1;poly(deck,toView);ctx.stroke();
+    const ck=[P(2,-6,5),P(2,6,5),P(-19,5.8,5),P(-19,-5.8,5)];
+    if(!b.cabin){
+      ctx.fillStyle="#cdbf9e";poly(ck,toView);ctx.fill();
+      ctx.fillStyle="#b3a685";poly([P(2,-6,5),P(2,6,5),P(1,6,3),P(1,-6,3)],toView);ctx.fill();
+    }
+    submerge(deck);
+    const t0=toView(P(-23,0,6.5)),t1=toView(P(-23+Math.cos(ra)*15,Math.sin(ra)*15,6.5));
+    ctx.strokeStyle="#8a5a2b";ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(t0[0],t0[1]);ctx.lineTo(t1[0],t1[1]);ctx.stroke();
+  }});
+  // a sailor standing on the centreboard on the far side of the hull is partly hidden behind it
+  const ox=-Math.cos(b.h)*(b.cap?b.cap.side:1),oy=-Math.sin(b.h)*(b.cap?b.cap.side:1);
+  const behind=b.capsized&&b.cap.phase==="over"&&(ox*-0.2+oy*0.72)<0;
+  if(behind)drawCapsizedCrew(b,P);
+  items.sort((p,q)=>p.z-q.z).forEach(it=>it.draw());
+  if(!b.capsized&&!b.moored&&deckF.vis>0)drawSeatedCrew(b,P,ra,look.shirt);
+  if(b.moored)drawMooredRig(b,P,mastBase,mastTop);
+  else if(!over)drawRig(b,sp,mastBase,mastTop,F,ah,look);
+  if(b.capsized&&!behind)drawCapsizedCrew(b,P);
+}
+// a moored boat: sail rolled up along the boom, which is lashed down the middle; the committee boat flies a flag
+function drawMooredRig(b,P,mastBase,mastTop){
+  const boomEnd=P(-16,0,9);
+  const mb=toView(mastBase),mt=toView(mastTop),be=toView(boomEnd),bs=toView(P(8,0,9));
+  ctx.strokeStyle="rgba(0,12,22,0.28)";ctx.lineWidth=2;ctx.beginPath();
+  const s0=toShadow(mastBase),s1=toShadow(mastTop);ctx.moveTo(s0[0],s0[1]);ctx.lineTo(s1[0],s1[1]);ctx.stroke();
+  ctx.strokeStyle="#e9e6dc";ctx.lineWidth=4;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(bs[0],bs[1]);ctx.lineTo(be[0],be[1]);ctx.stroke();
+  ctx.strokeStyle="#2b3a40";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(mb[0],mb[1]);ctx.lineTo(mt[0],mt[1]);ctx.stroke();
+  if(b.flag){
+    const tx=-Math.sin(S.wind.from),ty=Math.cos(S.wind.from),fl=b.flag,w=Math.sin(S.t*9+b.x)*2;
+    ctx.fillStyle=fl;ctx.beginPath();ctx.moveTo(mt[0],mt[1]);
+    ctx.lineTo(mt[0]+tx*20-ty*1+w,mt[1]+ty*20+tx*1+4);ctx.lineTo(mt[0]+tx*2,mt[1]+ty*2+9);ctx.closePath();ctx.fill();
+  }
+}
+function drawRig(b,sp,mastBase,mastTop,F,ah,look=PLAYER_LOOK){
+  const soak=clamp((ah-0.9)/0.6,0,1);                  // sail lying in the water
+  drawSail(sp,toView,soak?"rgba("+Math.round(255-60*soak)+","+Math.round(255-30*soak)+","+Math.round(255-20*soak)+","+(0.9-0.3*soak).toFixed(2)+")":(sp.luff?"rgba(255,255,255,0.78)":look.sail),"rgba(150,170,175,0.9)");
+  if(soak)submerge([sp.tack,sp.clew,...sp.leech,sp.head]);
+  const tb=toView(sp.tack),cb=toView(sp.clew);
+  ctx.strokeStyle="#3a4a50";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(tb[0],tb[1]);ctx.lineTo(cb[0],cb[1]);ctx.stroke();
+  const mb=toView(mastBase),mt=toView(mastTop);
+  ctx.strokeStyle="#2b3a40";ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(mb[0],mb[1]);ctx.lineTo(mt[0],mt[1]);ctx.stroke();
   // masthead wind indicator: points where the apparent wind is blowing
-  if(F){
-    const mxw=b.x+Math.sin(b.h)*8,myw=b.y-Math.cos(b.h)*8;
+  if(F&&!b.capsized&&b===S.boat){
+    const mxw=mt[0],myw=mt[1];
     const dirTo=b.h+F.awa+Math.PI, ux=Math.sin(dirTo),uy=-Math.cos(dirTo);
     ctx.strokeStyle="#ff7b30";ctx.lineWidth=2;
     ctx.beginPath();ctx.moveTo(mxw-ux*6,myw-uy*6);ctx.lineTo(mxw+ux*11,myw+uy*11);ctx.stroke();
     ctx.fillStyle="#ff7b30";ctx.beginPath();ctx.moveTo(mxw+ux*14,myw+uy*14);ctx.lineTo(mxw+ux*7-uy*4,myw+uy*7+ux*4);ctx.lineTo(mxw+ux*7+uy*4,myw+uy*7-ux*4);ctx.closePath();ctx.fill();
   }
 }
-function drawCapsized(b,L,Wd){
-  const s=b.heel>0?1:-1;
-  // sail lying flat on the water on the low side
-  ctx.fillStyle="rgba(255,255,255,0.75)";ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(s*62,-2);ctx.lineTo(s*8,18);ctx.closePath();ctx.fill();
-  ctx.strokeStyle="#3a4a50";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(s*62,-2);ctx.stroke();
-  // hull on its side: narrow, showing its bottom and centreboard
-  ctx.save();ctx.scale(0.55,1);ctx.fillStyle="#d7cfbd";drawHull(L,Wd);ctx.fill();ctx.restore();
-  ctx.fillStyle="#2b3a40";ctx.fillRect(-s*4-1.5,-6,3,14);
-  // crew in the water beside the centreboard
-  const bob=Math.sin(S.t*3)*1.5;
-  ctx.fillStyle="rgba(230,245,242,0.4)";ctx.beginPath();ctx.arc(-s*14,2+bob,8,0,TAU);ctx.fill();
-  ctx.fillStyle="#e8463c";ctx.beginPath();ctx.arc(-s*14,2+bob,4.5,0,TAU);ctx.fill();
-  ctx.fillStyle="#e6b98f";ctx.beginPath();ctx.arc(-s*14,-1+bob,2.6,0,TAU);ctx.fill();
-  // righting progress
-  if(b.rightT>0){ctx.strokeStyle="#71e3a6";ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,34,-Math.PI/2,-Math.PI/2+b.rightT/1.6*TAU);ctx.stroke();}
+const limb=(p0,p1,w,c)=>{const q0=toView(p0),q1=toView(p1);ctx.strokeStyle=c;ctx.lineWidth=w;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(q0[0],q0[1]);ctx.lineTo(q1[0],q1[1]);ctx.stroke();};
+function drawHead(p,r){const q=toView(p);ctx.fillStyle="#e6b98f";ctx.beginPath();ctx.arc(q[0],q[1],r,0,TAU);ctx.fill();
+  ctx.fillStyle="#2f3d44";ctx.beginPath();ctx.arc(q[0],q[1]-0.7,r+0.05,Math.PI*1.05,Math.PI*1.95);ctx.fill();}
+// crew: sits down and leans. Near the middle they sit on the cockpit thwart;
+// moving out they sit on the side deck with feet under the toe strap and lean the body out over the water.
+function crewPose(b,P,crew){
+  const m=Math.abs(crew), sg=crew>=0?1:-1;
+  const out=clamp(m/0.35,0,1), lean=clamp((m-0.3)/0.7,0,1);
+  const hipS=sg*(1.5+6.5*out+1*lean), hipZ=3.5+2*out;
+  const th=(12+66*lean)*Math.PI/180;
+  return {hip:P(-10,hipS,hipZ),
+    sh:P(-10+1.5,hipS+sg*Math.sin(th)*10,hipZ+Math.cos(th)*10),
+    head:P(-10+2,hipS+sg*Math.sin(th)*14.5,hipZ+Math.cos(th)*14.5),
+    knee:P(-4,hipS-sg*(3+2*out),hipZ+3.5-1.5*lean),
+    foot:P(-1,sg*(2.5-1*out),1.5)};
+}
+function drawSeatedCrew(b,P,ra,shirt="#d23b31"){
+  const c=crewPose(b,P,b.crew),tEnd=P(-23+Math.cos(ra)*15,Math.sin(ra)*15,6.5);
+  limb(c.hip,c.knee,3.6,"#27465c");limb(c.knee,c.foot,3.2,"#27465c");
+  limb(c.hip,c.sh,6,shirt);limb(c.sh,tEnd,2,"#e6b98f");
+  drawHead(c.head,3);
+}
+const lerp3=(p,q,t)=>({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t,z:p.z+(q.z-p.z)*t});
+function drawSwimmer(p,dir,stroke){
+  ctx.fillStyle="rgba(235,248,246,0.35)";ctx.beginPath();ctx.ellipse(p.x,p.y,8,6,0,0,TAU);ctx.fill();
+  const ax=Math.cos(dir),ay=Math.sin(dir),nx=-ay,ny=ax;
+  // arms reaching forward alternately
+  ctx.strokeStyle="#e6b98f";ctx.lineWidth=1.8;ctx.lineCap="round";
+  for(const sgn of [1,-1]){const reach=4+4*Math.max(0,Math.sin(stroke+(sgn>0?0:Math.PI)));
+    ctx.beginPath();ctx.moveTo(p.x+nx*3*sgn,p.y+ny*3*sgn);ctx.lineTo(p.x+nx*4*sgn+ax*reach,p.y+ny*4*sgn+ay*reach);ctx.stroke();}
+  ctx.fillStyle="#e8463c";ctx.beginPath();ctx.arc(p.x,p.y,4.5,0,TAU);ctx.fill();
+  drawHead({x:p.x+ax*3.5,y:p.y+ay*3.5,z:1},2.7);
+}
+function drawCapsizedCrew(b,P){
+  const c=b.cap,sd=c.side,r={x:Math.cos(b.h),y:Math.sin(b.h)};
+  const sw=swimmerPos(b);
+  if(c.phase==="falling"){
+    // thrown off the high side, over the boom, into the water by the sail
+    const t=clamp((c.hm-0.7)/(FLAT-0.7),0,1);
+    const seat=crewPose(b,P,c.crew0).hip, land={x:sw.land.x,y:sw.land.y,z:0};
+    const p=lerp3(seat,land,t);p.z+=Math.sin(t*Math.PI)*10;
+    limb(p,{x:p.x+r.x*sd*6,y:p.y+r.y*sd*6,z:p.z+4},5.5,"#d23b31");
+    drawHead({x:p.x+r.x*sd*9,y:p.y+r.y*sd*9,z:p.z+6},3);
+    return;
+  }
+  const tip=boardTip(b),root=P(2,0,-2);
+  const out={x:-r.x*sd,y:-r.y*sd};                       // away from the hull, on the high side
+  if(c.phase==="over"&&c.swim<1){
+    const dt=0.02,c2={...c,swim:Math.min(1,c.swim+dt)};const nxt=swimmerPos({...b,cap:c2});
+    drawSwimmer(sw,Math.atan2(nxt.y-sw.y,nxt.x-sw.x),S.t*7);
+    return;
+  }
+  if(c.phase==="over"){
+    if(c.lever<0.02){ // hanging on to the end of the centreboard, waiting
+      drawSwimmer({x:tip.x+out.x*4,y:tip.y+out.y*4,z:0},Math.atan2(-out.y,-out.x),0);
+      return;
+    }
+    drawRighter(righterPose(b,P,c,out));
+    return;
+  }
+  // popping: as she comes up the board drops away, the sailor slides into the water beside the
+  // cockpit and is scooped in, ending up sitting in the middle
+  if(!c.popFrom)c.popFrom=righterPose(b,P,{...c,lever:1},out);
+  const t=clamp(c.t/1.1,0,1),e=t*t*(3-2*t),seat=crewPose(b,P,0),f=c.popFrom;
+  const sag=Math.sin(t*Math.PI)*4;                            // dips towards the water on the way in
+  const k={feet:lerp3(f.feet,seat.foot,e),knee:lerp3(f.knee,seat.knee,e),hip:lerp3(f.hip,seat.hip,e),
+    sh:lerp3(f.sh,seat.sh,e),head:lerp3(f.head,seat.head,e),hand:lerp3(f.hand,seat.knee,e)};
+  for(const q of [k.hip,k.sh,k.head])q.z-=sag;
+  drawRighter(k);
+}
+// Standing on the centreboard: feet near the hull, body straight and leaning back away from the boat,
+// arms stretched to the gunwale. The further she has come up, the further back the sailor leans.
+function righterPose(b,P,c,out){
+  const lv=c.lever, prog=clamp((FLAT-c.hm)/(FLAT-0.95),0,1);
+  const climb=clamp(lv*1.6,0,1);
+  const root=P(2,0,-2),tip=boardTip(b);
+  const onBoard=lerp3(root,tip,0.3);onBoard.z=Math.max(onBoard.z,0.5);
+  const inWater={x:tip.x+out.x*3,y:tip.y+out.y*3,z:0};
+  const feet=lerp3(inWater,onBoard,climb);
+  const phi=(15+45*lv+10*prog)*Math.PI/180;                 // body angle back from upright
+  const ux=out.x*Math.sin(phi),uy=out.y*Math.sin(phi),uz=Math.cos(phi);
+  const L=(p,len)=>({x:p.x+ux*len,y:p.y+uy*len,z:p.z+uz*len});
+  const hip=L(feet,8*climb+3*(1-climb)), sh=L(hip,7.5), head=L(sh,3.5);
+  // knees bend slightly towards the boat
+  const knee={x:(feet.x+hip.x)/2-out.x*1.6,y:(feet.y+hip.y)/2-out.y*1.6,z:(feet.z+hip.z)/2};
+  // hands: reach towards the gunwale on the high side, arms at most 7 long
+  const g=P(0,-c.side*9.2,5),dx=g.x-sh.x,dy=g.y-sh.y,dz=g.z-sh.z,dl=Math.hypot(dx,dy,dz)||1,al=Math.min(7,dl);
+  const hand={x:sh.x+dx/dl*al,y:sh.y+dy/dl*al,z:sh.z+dz/dl*al};
+  return {feet,knee,hip,sh,head,hand};
+}
+function drawRighter(k){
+  // soft shadow on the water under the body
+  const sh0=toShadow(k.feet),sh1=toShadow(k.head);
+  ctx.strokeStyle="rgba(0,12,22,0.25)";ctx.lineWidth=6;ctx.lineCap="round";
+  ctx.beginPath();ctx.moveTo(sh0[0],sh0[1]);ctx.lineTo(sh1[0],sh1[1]);ctx.stroke();
+  limb(k.feet,k.knee,3.4,"#27465c");limb(k.knee,k.hip,3.8,"#27465c");   // legs
+  limb(k.sh,k.hand,2,"#e6b98f");                                     // arms to the gunwale
+  limb(k.hip,k.sh,6,"#d23b31");                                       // body in buoyancy aid
+  drawHead(k.head,3);
 }
 function targetPoint(){
   if(S.mode!=="race")return null;
   const r=S.race;
-  if(r.stage==="pre"||(r.stage==="racing"&&r.next>=MARKS.length))return {x:0,y:0,label:r.stage==="pre"?"Start":"Finish"};
-  if(r.stage==="racing")return {x:MARKS[r.next].x,y:MARKS[r.next].y,label:"Mark "+(r.next+1)};
+  if(r.stage==="done")return null;
+  if(!r.started||r.next>=MARKS.length)return {x:0,y:0,label:r.started?"Finish":"Start"};
+  return {x:MARKS[r.next].x,y:MARKS[r.next].y,label:"Mark "+(r.next+1)};
   return null;
 }
 function drawEdgeArrow(){
@@ -936,33 +1723,55 @@ function drawEdgeArrow(){
   ctx.fillText(Math.round(dist)+"m",ax,ay);
 }
 
+// big countdown numbers for the last ten seconds before the start, then GO
+function drawCountdown(){
+  if(S.mode!=="race")return;
+  const rem=S.race.gun-S.t;
+  if(rem>10||rem<-1.2)return;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  const txt=rem>0?String(Math.ceil(rem)):"GO!",fr=rem>0?rem-Math.floor(rem):1+rem/1.2;
+  const sz=Math.round(Math.min(W,H)*0.16*(0.85+0.3*fr));
+  ctx.font="800 "+sz+"px 'Big Shoulders Display','Arial Narrow',Impact,sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.globalAlpha=rem>0?0.35+0.6*fr:Math.max(0,fr);
+  ctx.lineWidth=8;ctx.strokeStyle="rgba(5,27,36,0.8)";ctx.lineJoin="round";ctx.strokeText(txt,W/2,H*0.3);
+  ctx.fillStyle=rem>0?"#ffd447":"#71e3a6";ctx.fillText(txt,W/2,H*0.3);
+  ctx.globalAlpha=1;
+}
 // ---------- dial ----------
 const dial=$("dial"),dctx=dial.getContext("2d");
 function drawDial(){
   const dpr=DPR,s=168;
   if(dial.width!==s*dpr){dial.width=s*dpr;dial.height=s*dpr;}
   dctx.setTransform(dpr,0,0,dpr,0,0);dctx.clearRect(0,0,s,s);
-  const c=s/2,R=62;
-  dctx.translate(c,c+4);
-  // sectors (0 = straight into the wind, at the top of the dial)
-  const sector=(a0,a1,col)=>{for(const sg of [1,-1]){dctx.beginPath();dctx.moveTo(0,0);dctx.arc(0,0,R,-Math.PI/2+sg*a0*Math.PI/180,-Math.PI/2+sg*a1*Math.PI/180,sg<0);dctx.closePath();dctx.fillStyle=col;dctx.fill();}};
+  const c=s/2,R=60;
+  dctx.translate(c,c);
+  // The dial is a compass with north at the top, matching the map. The wind zones turn with the wind,
+  // and the boat is drawn at its real heading.
+  const wf=S.wind.from;
+  const at=(deg,r)=>{const a=wf+deg*Math.PI/180-Math.PI/2;return [Math.cos(a)*r,Math.sin(a)*r];};
+  const sector=(a0,a1,col)=>{for(const sg of [1,-1]){dctx.beginPath();dctx.moveTo(0,0);
+    dctx.arc(0,0,R,wf-Math.PI/2+sg*a0*Math.PI/180,wf-Math.PI/2+sg*a1*Math.PI/180,sg<0);dctx.closePath();dctx.fillStyle=col;dctx.fill();}};
   sector(0,42,"rgba(255,98,102,0.30)");
   sector(42,60,"rgba(113,227,166,0.16)");
   sector(80,105,"rgba(113,227,166,0.30)");
   dctx.strokeStyle="rgba(160,214,214,0.35)";dctx.lineWidth=1;dctx.beginPath();dctx.arc(0,0,R,0,TAU);dctx.stroke();
-  for(let d=0;d<360;d+=30){const a=d*Math.PI/180-Math.PI/2;dctx.beginPath();dctx.moveTo(Math.cos(a)*(R-4),Math.sin(a)*(R-4));dctx.lineTo(Math.cos(a)*R,Math.sin(a)*R);dctx.stroke();}
-  // wind arrow from the top
-  dctx.fillStyle="#e6f2ef";dctx.strokeStyle="#e6f2ef";dctx.lineWidth=2;
-  dctx.beginPath();dctx.moveTo(0,-R-14);dctx.lineTo(0,-R+6);dctx.stroke();
-  dctx.beginPath();dctx.moveTo(0,-R+12);dctx.lineTo(-5,-R+3);dctx.lineTo(5,-R+3);dctx.closePath();dctx.fill();
-  dctx.font="700 9px 'Atkinson Hyperlegible',sans-serif";dctx.textAlign="center";dctx.textBaseline="middle";dctx.fillStyle="#8db4b4";
-  dctx.fillText("WIND",22,-R-9);
-  dctx.fillText("NO-GO",0,-R+24);
-  dctx.fillText("BEAM",-R+16,0);dctx.fillText("BEAM",R-16,0);
-  dctx.fillText("RUN",0,R-12);
-  // boat, rotated relative to the wind
-  const rel=S.boat?wrap(S.boat.h-S.wind.from):0;
-  dctx.rotate(rel);
+  // compass ticks and north marker (fixed)
+  for(let d=0;d<360;d+=30){const a=d*Math.PI/180-Math.PI/2,l=d%90?4:7;dctx.beginPath();dctx.moveTo(Math.cos(a)*(R-l),Math.sin(a)*(R-l));dctx.lineTo(Math.cos(a)*R,Math.sin(a)*R);dctx.stroke();}
+  dctx.font="700 9px 'JetBrains Mono',monospace";dctx.textAlign="center";dctx.textBaseline="middle";dctx.fillStyle="#8db4b4";
+  dctx.fillText("N",0,-R-8);
+  // wind arrow coming in from the direction the wind blows from
+  const [ox,oy]=at(0,R+18),[ix,iy]=at(0,R-2),[hx,hy]=at(0,R+5);
+  const ux=(ix-ox)/20,uy=(iy-oy)/20,px=-uy,py=ux;
+  dctx.strokeStyle="#e6f2ef";dctx.fillStyle="#e6f2ef";dctx.lineWidth=2;
+  dctx.beginPath();dctx.moveTo(ox,oy);dctx.lineTo(hx,hy);dctx.stroke();
+  dctx.beginPath();dctx.moveTo(ix,iy);dctx.lineTo(hx+px*5,hy+py*5);dctx.lineTo(hx-px*5,hy-py*5);dctx.closePath();dctx.fill();
+  // zone labels stay upright while their positions turn with the wind
+  dctx.font="700 9px 'Atkinson Hyperlegible',sans-serif";dctx.fillStyle="#8db4b4";
+  let q=at(0,R-22);dctx.fillText("NO-GO",q[0],q[1]);
+  q=at(-92,R-17);dctx.fillText("BEAM",q[0],q[1]);q=at(92,R-17);dctx.fillText("BEAM",q[0],q[1]);
+  q=at(180,R-13);dctx.fillText("RUN",q[0],q[1]);
+  // boat at its heading
+  dctx.rotate(S.boat?S.boat.h:0);
   dctx.fillStyle="#f4f1e8";dctx.beginPath();dctx.moveTo(0,-26);dctx.bezierCurveTo(9,-16,10,4,8,18);dctx.lineTo(-8,18);dctx.bezierCurveTo(-10,4,-9,-16,0,-26);dctx.closePath();dctx.fill();
   if(S.boat&&!S.boat.capsized){const ba=S.boat.boomDraw;dctx.strokeStyle="#ff7b30";dctx.lineWidth=2.4;dctx.beginPath();dctx.moveTo(0,-8);dctx.lineTo(Math.sin(ba)*22,-8+Math.cos(ba)*22);dctx.stroke();}
 }
@@ -973,7 +1782,7 @@ function drawMinimap(){
   const w=150,h=194,dpr=DPR;
   if(mm.width!==w*dpr){mm.width=w*dpr;mm.height=h*dpr;}
   mctx.setTransform(dpr,0,0,dpr,0,0);mctx.clearRect(0,0,w,h);
-  const bx0=-700,by0=-2300,bw=2400,bh=3100,k=Math.min(w/bw,h/bh);
+  const bx0=-1750,by0=-2450,bw=2700,bh=3250,k=Math.min(w/bw,h/bh);
   const X=x=>(x-bx0)*k,Y=y=>(y-by0)*k;
   mctx.fillStyle="rgba(17,88,107,0.6)";mctx.fillRect(0,0,w,h);
   for(const o of S.obstacles){
@@ -983,9 +1792,11 @@ function drawMinimap(){
   mctx.strokeStyle="rgba(255,212,71,0.8)";mctx.setLineDash([3,2]);mctx.beginPath();mctx.moveTo(X(LINE.x1),Y(0));mctx.lineTo(X(LINE.x2),Y(0));mctx.stroke();mctx.setLineDash([]);
   const r=S.race;
   MARKS.forEach((m,i)=>{
-    mctx.fillStyle=i<r.next?"#8c9b9c":"#ffd447";mctx.beginPath();mctx.arc(X(m.x),Y(m.y),i===r.next&&r.stage==="racing"?5:3.5,0,TAU);mctx.fill();
+    mctx.fillStyle=i<r.next?"#8c9b9c":"#ffd447";mctx.beginPath();mctx.arc(X(m.x),Y(m.y),i===r.next&&r.started?5:3.5,0,TAU);mctx.fill();
     mctx.fillStyle="#e6f2ef";mctx.font="700 9px 'JetBrains Mono',monospace";mctx.fillText(String(i+1),X(m.x)+6,Y(m.y)+3);
   });
+  for(const ai of S.ais){const a=ai.b;mctx.save();mctx.translate(clamp(X(a.x),2,w-2),clamp(Y(a.y),2,h-2));mctx.rotate(a.h);
+    mctx.fillStyle=ai.look.stripe;mctx.beginPath();mctx.moveTo(0,-5);mctx.lineTo(3.5,3.5);mctx.lineTo(-3.5,3.5);mctx.closePath();mctx.fill();mctx.restore();}
   const b=S.boat;
   mctx.save();mctx.translate(clamp(X(b.x),2,w-2),clamp(Y(b.y),2,h-2));mctx.rotate(b.h);
   mctx.fillStyle="#ff7b30";mctx.beginPath();mctx.moveTo(0,-6);mctx.lineTo(4,4);mctx.lineTo(-4,4);mctx.closePath();mctx.fill();mctx.restore();
@@ -994,7 +1805,7 @@ function drawMinimap(){
 // ---------- side panel + HUD text ----------
 function buildSide(){
   const race=S.mode==="race";
-  $("modeName").textContent=race?"Race course":"Open water";
+  $("modeName").textContent=(race?"Race course":"Open water")+" · "+LV().label+" wind";
   $("sideTitle").textContent=race?"Course":"Drills";
   mm.hidden=!race;$("drills").hidden=race;
   $("drills").innerHTML=DRILLS.map(d=>'<li data-id="'+d.id+'">'+d.text+"</li>").join("");
@@ -1022,9 +1833,9 @@ function updateHUD(){
   $("bRudder").style.left=(rp<0?50+rp:50)+"%";$("bRudder").style.width=Math.abs(rp)+"%";
   $("rRudder").textContent=Math.round(b.rudder*35)+"°";
   $("autoTag").textContent=S.auto?"ON":"";
-  const hd=b.heel*D,ha=Math.min(1,Math.abs(hd)/49);
+  const hd=b.heel*D,ha=Math.min(1,Math.abs(hd)/40);
   const bh=$("bHeel");bh.style.left=(hd<0?50-ha*50:50)+"%";bh.style.width=(ha*50)+"%";
-  bh.style.background=b.capsized?"var(--bad)":Math.abs(hd)>30?"var(--bad)":Math.abs(hd)>15?"var(--warn)":"var(--good)";
+  bh.style.background=b.capsized?"var(--bad)":Math.abs(hd)>24?"var(--bad)":Math.abs(hd)>12?"var(--warn)":"var(--good)";
   $("rHeel").textContent=b.capsized?"over":Math.round(Math.abs(hd))+"°"+(Math.abs(hd)>=1?(hd>0?" S":" P"):"");
   const bc=$("bCrew");bc.style.left=(b.crew<0?50+b.crew*50:50)+"%";bc.style.width=Math.abs(b.crew*50)+"%";
   $("rCrew").textContent=Math.abs(b.crew)<0.05?"mid":Math.round(Math.abs(b.crew)*100)+"% "+(b.crew>0?"S":"P");
@@ -1049,9 +1860,16 @@ function updateHUD(){
   else if(diff<-0.14){chip="Too tight";cls="bad";}
   if(S.auto&&cls!=="bad"&&absA>=0.62){chip="Auto";cls="good";}
   const heelD=b.heel*D,lowSide=heelD>0?"starboard":"port",leanKey=heelD>0?"Q or swipe left":"E or swipe right";
-  if(b.capsized){chip="Capsized";cls="bad";tip="Capsized! Hold Space to pull the boat back upright. Then sheet in gently.";}
-  else if(Math.abs(heelD)>30) tip="Heeling hard to "+lowSide+"! Lean to the other side ("+leanKey+") or let the sail out (↓) to spill wind, or you'll go over.";
-  else if(S.mode==="race"&&S.race.stage==="pre") tip="Sail up to the dashed start line and cross it heading upwind. The clock starts as you cross.";
+  if(b.capsized){chip="Capsized";cls="bad";const c=b.cap;
+    tip=c.phase==="falling"?"Over she goes!":c.phase==="popping"?"She's coming up. Sheet in gently once you're back in.":
+      c.swim<1?"Swim round to the centreboard (the fin sticking out of the bottom of the boat). Holding Space swims faster.":
+      "Hold Space: stand on the centreboard and lean back to pull the boat upright.";}
+  else if(Math.abs(heelD)>24) tip="Heeling hard to "+lowSide+"! Lean to the other side ("+leanKey+") or let the sail out (↓) to spill wind, or you'll go over.";
+  else if(F.kelp>0.15) tip="You're dragging through seaweed. It wraps round the centreboard and rudder and slows you right down. Steer out of it.";
+  else if(S.rowTip) tip=S.rowTip;
+  else if(S.mode==="race"&&S.race.ocs) tip="You crossed the line before the gun. Sail back below it (south of the dashed line), then cross again once the race has started.";
+  else if(S.mode==="race"&&S.race.stage==="pre") tip="Stay below the dashed line. Time your run so you are moving fast and cross it just after the countdown hits zero. Crossing early means going back.";
+  else if(S.mode==="race"&&!S.race.started) tip="The race has started! Cross the start line going upwind.";
   else if(twaD<42&&Math.abs(kn)<1.5) tip="You're in irons: pointing into the wind with no power. Hold the rudder hard to one side and let the sail out (↓) until the bow swings away.";
   else if(twaD<42) tip="Too close to the wind. The sail can't make power here, so bear away (steer away from the wind) to about 45°.";
   else if(luff&&!S.auto) tip="The sail is flapping (luffing). Pull it in (↑) until it fills with a smooth curve.";
@@ -1070,9 +1888,11 @@ function updateHUD(){
 
   if(S.mode==="race"){
     const r=S.race;
-    $("statusMain").textContent=fmt(r.stage==="pre"?0:r.time)+(r.pen?"  +"+r.pen+"s":"");
-    $("statusSub").innerHTML=r.stage==="pre"?"Prestart: cross the start line":
-      r.next<MARKS.length?"Next: <b>"+MARKS[r.next].name+"</b> ("+(r.next+1)+" of 3), keep it on your left":"Next: <b>Finish line</b>, cross it going upwind";
+    const rem=r.gun-S.t;
+    $("statusMain").textContent=r.stage==="pre"?"−"+fmt(Math.max(0,rem)).replace(/\.\d$/,""):fmt(r.time)+(r.pen?"  +"+r.pen+"s":"");
+    const place=r.started?" · <b>"+ord(playerPosition())+"</b> of "+(S.ais.length+1):"";
+    $("statusSub").innerHTML=r.ocs?"<b>Over early</b>: go back below the line":r.stage==="pre"?"Countdown to the start gun":!r.started?"<b>Cross the start line!</b>":
+      (r.next<MARKS.length?"Next: <b>"+MARKS[r.next].name+"</b> ("+(r.next+1)+" of 3), keep it on your left":"Next: <b>Finish line</b>, cross it going upwind")+place;
   }else{
     const o=S.open;
     $("statusMain").textContent=(o.dist/PX_PER_M/1852).toFixed(2)+" nm";
@@ -1089,6 +1909,9 @@ function frame(now){
   const live=S.mode!=="menu"&&!S.paused&&!(S.race&&S.race.stage==="done");
   if(live){acc+=dt;while(acc>=1/120){step(1/120);acc-=1/120;}}
   else{S.t+=dt*(S.paused?0:1);if(S.mode==="menu"){S.cam.x+=Math.sin(S.t*0.05)*0.2;updateWind(dt);}}
+  // waves and streaks move at a speed set by the wind, accumulated frame by frame so a change in
+  // wind strength changes their speed smoothly instead of making them jump
+  if(!S.paused){const rate=S.wind.speed/110;S.wavePh=((S.wavePh||0)+dt*0.22*rate)%1000;S.streakPh=((S.streakPh||0)+dt*0.11*rate)%1000;}
   S.zoom=clamp(Math.min(W,H)/780,0.55,1.15);
   if(S.boat&&S.mode!=="menu"){
     const b=S.boat,la=0.9;
@@ -1100,12 +1923,14 @@ function frame(now){
   if(S.mode!=="menu"){
     worldTransform();
     drawFixedRefs();
-    drawObstacles();
     if(S.mode==="race")drawCourse();
     drawTrail();
-    drawMotion();
-    drawBoat();
+    drawFx("ring");
+    if(!S.boat.capsized)drawMotion();
+    drawScene();
+    drawFx("drop");
     drawEdgeArrow();
+    drawCountdown();
     hudT+=dt;
     if(hudT>0.08){hudT=0;updateHUD();drawDial();if(S.mode==="race")drawMinimap();}
   }
