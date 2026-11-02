@@ -33,6 +33,30 @@ html,body{height:100%;overflow:hidden}
 body{background:var(--sea-deep);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45}
 #sea{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none}
 /* sunlight over the sea: warm glare from the top left and darker edges, composited by the browser */
+/* the lesson: a card at the top, and a glowing ring round whatever it's talking about */
+#lesson{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:20;width:min(500px,calc(100vw - 32px));box-sizing:border-box;
+  background:var(--panel);border:1.5px solid var(--mark);border-radius:12px;padding:12px 16px 12px;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+.lsHead{display:flex;align-items:baseline;gap:10px}
+#lsStep{font-family:var(--mono);font-size:12px;color:var(--mark);font-weight:700}
+#lsTitle{margin:0;font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:24px;letter-spacing:.02em;line-height:1}
+#lsText{margin:6px 0 10px;font-size:14.5px;line-height:1.45}
+.lsBtns{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.lsBtns .btn{padding:6px 14px}
+#lsStatus{margin-right:auto;font-weight:700;font-size:13px;color:var(--muted)}
+#lsStatus.done{color:var(--good)}
+/* while capsized: a big, pulsing reminder of what to press */
+#capCall{position:fixed;left:50%;top:62%;transform:translateX(-50%);z-index:18;pointer-events:none;text-align:center;
+  background:rgba(5,27,36,.88);border:2px solid var(--good);border-radius:14px;padding:10px 22px 8px;animation:capPulse 1s ease-in-out infinite}
+#capCall .big{display:block;font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:40px;line-height:1;color:var(--good);letter-spacing:.02em}
+#capCall .big kbd{font-size:30px;padding:2px 12px;border-color:var(--good);color:var(--good);vertical-align:3px}
+#capCall .small{display:block;font-weight:700;font-size:14px;margin-top:4px}
+@keyframes capPulse{0%,100%{transform:translateX(-50%) scale(1);box-shadow:0 0 0 0 rgba(113,227,166,.5)}50%{transform:translateX(-50%) scale(1.06);box-shadow:0 0 0 12px rgba(113,227,166,0)}}
+@media (prefers-reduced-motion:reduce){#capCall{animation:none}}
+#lsRing{position:fixed;z-index:19;pointer-events:none;border:2.5px solid var(--mark);border-radius:14px;box-shadow:0 0 0 4px rgba(255,212,71,.18),0 0 22px rgba(255,212,71,.45);animation:lsPulse 1.4s ease-in-out infinite;transition:all .3s}
+@keyframes lsPulse{50%{box-shadow:0 0 0 8px rgba(255,212,71,.08),0 0 30px rgba(255,212,71,.6)}}
+body.lessonOn #toasts{top:auto;bottom:38%}
+body.lessonOn #side,body.lessonOn #tipPanel{visibility:hidden!important}
+@media (prefers-reduced-motion:reduce){#lsRing{animation:none}}
 #perf{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:30;pointer-events:none;
   font:500 11px var(--mono);color:var(--ink);background:var(--panel);border:1px solid var(--panel-line);border-radius:6px;padding:3px 8px;white-space:nowrap}
 #light{position:fixed;inset:0;pointer-events:none;
@@ -71,7 +95,8 @@ button{font:inherit;color:inherit}
 .chip{flex:none;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1.5px solid currentColor;margin-top:1px}
 .chip.good{color:var(--good)} .chip.warn{color:var(--warn)} .chip.bad{color:var(--bad)} .chip.idle{color:var(--muted)}
 
-#instr{display:grid;grid-template-columns:auto auto 1fr;gap:8px 18px;min-width:280px;width:400px;box-sizing:border-box}
+/* a narrow, tall column in the bottom-right corner: readouts stacked, then the keys */
+#instr{display:grid;grid-template-columns:1fr;gap:10px;width:196px;box-sizing:border-box}
 .readout{display:flex;flex-direction:column}
 .readout .val{font-family:var(--mono);font-weight:700;font-size:24px;line-height:1.1;font-variant-numeric:tabular-nums}
 .readout .val small{font-size:12px;color:var(--muted);font-weight:500;margin-left:3px}
@@ -105,7 +130,8 @@ button{font:inherit;color:inherit}
 .bar .num{white-space:nowrap}
 #shiftLabel{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 .bar .num{font-family:var(--mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
-.keys{grid-column:1/-1;font-size:12px;color:var(--muted);border-top:1px solid var(--panel-line);padding-top:6px}
+.keys{grid-column:1/-1;display:grid;grid-template-columns:auto 1fr;gap:5px 8px;align-items:center;font-size:12px;line-height:1.25;color:var(--muted);border-top:1px solid var(--panel-line);padding-top:8px}
+.keys>span:nth-child(odd){white-space:nowrap}
 kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;border:1px solid var(--panel-line);border-bottom-width:2px;background:rgba(255,255,255,.05);color:var(--ink)}
 #autoTag{color:var(--good);font-weight:700}
 
@@ -188,11 +214,11 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 }
 #tipPanel{min-width:210px}
 #trimChip{display:none}   /* the trim verdict now sits beside the sail gauge */
-@media (max-width:1180px){.keys{display:none}}
+@media (max-height:700px){.keys{display:none}}   /* the keys list needs height, not width, now the panel is a column */
 @media (max-width:760px){
   #dialPanel,#side{display:none}
   #tipPanel{display:none}
-  #instr{min-width:0;width:auto;grid-template-columns:repeat(2,1fr);gap:6px 12px;flex:1}
+  #instr{min-width:0;width:auto;grid-template-columns:repeat(2,1fr);gap:6px 12px}
   #sailPanel{width:128px;max-height:300px}
   .readout .val{font-size:19px}
   .bar{grid-template-columns:64px 1fr 52px}
@@ -208,6 +234,13 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 <canvas id="sea" tabindex="0" aria-label="Sailing game view"></canvas>
 <div id="light" aria-hidden="true"></div>
 <div id="perf" hidden></div>
+<section id="lesson" hidden aria-live="polite">
+  <div class="lsHead"><span id="lsStep">1 / 11</span><h3 id="lsTitle">Welcome</h3></div>
+  <p id="lsText"></p>
+  <div class="lsBtns"><span id="lsStatus"></span><button class="btn" id="lsBack">◀ Back</button><button class="btn" id="lsSkip">Skip</button><button class="btn primary" id="lsNext">Next ⏎</button></div>
+</section>
+<div id="lsRing" hidden aria-hidden="true"></div>
+<div id="capCall" hidden aria-live="assertive"><span class="big">Hold <kbd>Space</kbd></span><span class="small" id="capSub">to right the boat</span></div>
 
 <div id="hud" hidden>
   <div class="row top">
@@ -241,7 +274,15 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
     <section class="panel" id="instr">
       <div class="readout"><span class="lbl">Boat speed</span><span class="val" id="rSpeed">0.0<small>kn</small></span><span class="sub" id="rPct">&nbsp;</span></div>
       <div class="readout"><span class="lbl" id="r2Lbl">Towards mark</span><span class="val" id="r2">0.0<small>kn</small></span><span class="sub" id="r2Sub">&nbsp;</span></div>
-      <div class="keys"><kbd>←</kbd><kbd>→</kbd> steer · <kbd>↑</kbd><kbd>↓</kbd> sail in / out · <kbd>Q</kbd><kbd>E</kbd> or two-finger swipe across the boat: lean · <kbd>Space</kbd> right a capsize · <kbd>T</kbd> auto-trim <span id="autoTag"></span> · <kbd>N</kbd> sound · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>P</kbd> pause</div>
+      <div class="keys">
+        <span><kbd>←</kbd><kbd>→</kbd></span><span>steer</span>
+        <span><kbd>↑</kbd><kbd>↓</kbd></span><span>sail in / out</span>
+        <span><kbd>Q</kbd><kbd>E</kbd></span><span>lean (or swipe across the boat)</span>
+        <span><kbd>Space</kbd></span><span>right a capsize</span>
+        <span><kbd>T</kbd></span><span>auto-trim <span id="autoTag"></span></span>
+        <span><kbd>+</kbd><kbd>−</kbd></span><span>zoom</span>
+        <span><kbd>N</kbd> <kbd>P</kbd></span><span>sound · pause</span>
+      </div>
     </section>
   </div>
 </div>
@@ -252,6 +293,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
     <h1 class="brand">Close<br><span>Hauled</span></h1>
     <p class="lede">A top-down sailing dinghy driven by real sailing physics. Steer with the rudder, set the angle of the sail, and read the wind from the water around you.</p>
     <div class="modes">
+      <button class="mode" id="goLesson"><span class="k">L</span><h2>Learn to sail</h2><p>New to sailing? A guided first sail: the keys, the gauges, steering, trimming, balancing, tacking and gybing, one step at a time.</p><span class="menuBest" id="lessonTag"></span></button>
       <button class="mode" id="goOpen"><span class="k">1</span><h2>Open water</h2><p>Free sailing in wind that shifts and changes strength, plus seven drills that teach you the points of sail.</p></button>
       <button class="mode" id="goRace"><span class="k">2</span><h2>Race course</h2><p>Race three other boats. Time your start to the countdown, round the marks, give way when the rules say so, and finish first. Choose a course below.</p><span class="menuBest" id="menuBest"></span></button>
     </div>
@@ -557,7 +599,10 @@ const DRILLS=[
   {id:"hike",text:"Lean out to keep the boat flat in 12+ knots of wind"}
 ];
 
+function showLessonTag(){let d=false;try{d=localStorage.getItem("closeHauledLessonDone")==="1";}catch(e){}
+  const t=$("lessonTag");if(t)t.textContent=d?"✓ Done: you can take it again any time":"★ New? Start here";}
 function startMode(mode){
+  if(S.lesson)endLesson();
   setTimeout(warmPolar,0);
   S.mode=mode;S.paused=false;S.t=0;S.lastLee=null;S.trail=[];S.hitCd=0;S.auto=false;S.fx=[];S.ais=[];S.rowTip=null;
   K.capsize=LV().capsize;
@@ -650,7 +695,7 @@ const $=id=>document.getElementById(id);
 function show(id,v){$(id).hidden=!v;}
 const finishOpen=()=>!$("finish").hidden;
 function togglePause(){S.paused=!S.paused;show("pause",S.paused);if(!S.paused)cv.focus();}
-function toMenu(){S.mode="menu";S.paused=false;show("pause",false);show("finish",false);show("hud",false);show("menu",true);$("goOpen").focus();}
+function toMenu(){if(S.lesson)endLesson();showLessonTag();S.mode="menu";S.paused=false;show("pause",false);show("finish",false);show("hud",false);show("menu",true);$("goOpen").focus();}
 function setLevel(k){
   levelKey=k;try{localStorage.setItem("closeHauledLevel",k);}catch(e){}
   document.querySelectorAll(".lvl").forEach(b=>b.setAttribute("aria-pressed",b.dataset.l===k?"true":"false"));
@@ -699,11 +744,12 @@ document.querySelectorAll(".lvl").forEach(b=>b.onclick=()=>setLevel(b.dataset.l)
 $("crsSeg").innerHTML=COURSE_KEYS.map(k=>'<button class="crs" data-c="'+k+'" aria-pressed="false"><canvas width="112" height="84" data-c="'+k+'" aria-hidden="true"></canvas><span>'+COURSES[k].name+"</span></button>").join("");
 document.querySelectorAll(".crs canvas").forEach(c=>drawCourseThumb(c,c.dataset.c));
 document.querySelectorAll(".crs").forEach(b=>b.onclick=()=>pickCourse(b.dataset.c));
-setLevel(levelKey);pickCourse(courseKey);
+setLevel(levelKey);pickCourse(courseKey);showLessonTag();
 $("goOpen").onclick=()=>startMode("open");
 $("goRace").onclick=()=>startMode("race");
 $("resume").onclick=togglePause;
-$("restart").onclick=()=>{startMode(S.mode);cv.focus();};
+$("restart").onclick=()=>{if(S.lesson)startLesson();else startMode(S.mode);cv.focus();};
+$("goLesson").onclick=()=>startLesson();
 $("toMenu1").onclick=toMenu;$("toMenu2").onclick=toMenu;
 $("again").onclick=()=>startMode("race");
 function toast(text,cls){
@@ -715,6 +761,105 @@ function toast(text,cls){
   setTimeout(()=>el.remove(),2300);
 }
 
+// ════════════════════════════════════════════════════════════════════
+// LEARN TO SAIL: A GUIDED FIRST SAIL
+// ════════════════════════════════════════════════════════════════════
+// Each step explains one thing, points at it (a ring round a panel, or round the boat or flag on the water)
+// and either waits for Next, or for the player to actually do it, then moves on.
+const holdFor=(L,cond,sec,dt)=>(L.holdT=cond?(L.holdT||0)+dt:0)>=sec;
+const LESSON=[
+  {t:"Welcome aboard",hl:"boat",next:true,x:"This is your dinghy, and you're the sailor in the red buoyancy aid. The wind is blowing steadily from the <b>top of the screen</b>: the white wave crests lie across it and roll downwind, so you can always read the wind from the water. There's nothing in your way, so take your time."},
+  {t:"The wind dial",hl:"#dialPanel",next:true,x:"Bottom left. The white arrow shows where the wind is coming from; your boat sits in the middle at its real heading. The <b>red slice is the no-go zone</b>: no boat can sail straight into the wind. The green slices are the fastest angles. Underneath it says which point of sail you're on."},
+  {t:"Steering",hl:"boat",x:"Steer with <kbd>←</kbd> and <kbd>→</kbd>. The boat turns slowly, like a real one. Turn her about a quarter of a turn, either way.",
+    goal:(L)=>Math.abs(wrap(S.boat.h-L.h0))>0.9},
+  {t:"Trimming the sail",hl:"#sailPanel",x:"The tall gauge on the right is your sail. <kbd>↑</kbd> pulls it in, <kbd>↓</kbd> lets it out. The <b>green zone</b> is the right setting for your angle to the wind, and it moves as you turn. Bring the white marker into the green and keep it there, saying <b>Good</b>, for a few seconds. (If it says No drive, steer away from the wind first.) The little flag on top of the mast shows which way the wind is hitting your sail.",
+    goal:(L,dt)=>holdFor(L,S.trimChip==="Good"&&S.boat.u>10,3,dt)},
+  {t:"Speed",hl:"#instr",x:"Bottom right is your speed, and how close it is to the best this boat could do at this angle. Fastest is usually with the wind from the side (a <b>beam reach</b>). Keep the sail in the green and hold at least <b>3.5 knots</b> for a few seconds.",
+    goal:(L,dt)=>holdFor(L,S.boat.u/PX_PER_KN>=3.5,3,dt)},
+  {t:"Balance",hl:"boat",ws:170,bal:true,x:"Now <b>the wind is picking up</b>, to about 14 knots. It pushes the boat over, which slows you and can capsize you. Lean out with <kbd>Q</kbd> / <kbd>E</kbd>, or swipe two fingers across the boat. From now on, <b>yellow chevrons</b> by the boat point the way to move (red means you're close to going over). Keep her nearly flat for 4 seconds.",
+    goal:(L,dt)=>holdFor(L,Math.abs(S.boat.heel)<0.21&&S.boat.u>25&&L.age>2,4,dt)},
+  {t:"Tacking",hl:"#dialPanel",ws:120,x:"<b>The wind has eased again</b>, to 10 knots. To get upwind you zig-zag. Steer the bow round <b>through the wind</b> (through the red zone on the dial) until the sail swaps sides. Keep the turn going so you don't stop head to wind. If you do get stuck (in irons), hold the rudder over until the bow swings away.",
+    goal:(L)=>!!S.open.done.tack},
+  {t:"Gybing",hl:"boat",x:"Now the other way: steer away from the wind until it's behind you, and keep turning until the stern passes through the wind. The sail hangs on for a moment, then the wind gets behind it and the <b>boom slams across</b>. That's a gybe: do it smoothly, it's the move that catches people out.",
+    goal:(L)=>!!S.open.done.gybe},
+  {t:"Capsizing",hl:"boat",ws:230,cap:true,x:"<b>The wind is up to 19 knots</b>, enough to tip you over. Try it: pull the sail in hard (<kbd>↑</kbd>) on a reach and stay sitting in the middle, and over you go. Then swim round to the <b>centreboard</b> (the fin sticking out of the bottom) and <b>hold <kbd>Space</kbd></b> to stand on it and pull her upright. (To stay upright in a gust, let the sail out and lean out.)",
+    goal:(L)=>L.wentOver&&L.upT>1.5},
+  {t:"Ready to race",next:true,finish:true,ws:120,x:"A race starts with a countdown: cross the <b>dashed line going upwind</b> just after the gun. Then round the <b>yellow numbered marks</b> in order, <b>keeping each one on your left</b>, and cross the line again to finish. The map top right shows the course; an arrow at the edge of the screen points to the next mark. Boats on <b>port tack</b> (wind on their left) give way to boats on <b>starboard</b>. You're ready!"}
+];
+const LESSON_BAL=LESSON.findIndex(st=>st.bal);
+// in the lesson, words like "tacked" and "gybed" aren't used until the step that explains them
+const LESSON_TERM={tack:LESSON.findIndex(st=>st.t==="Tacking"),gybe:LESSON.findIndex(st=>st.t==="Gybing")};
+const lessonKnows=term=>!S.lesson||S.lesson.i>=LESSON_TERM[term];
+function startLesson(){
+  if(S.lesson)endLesson();
+  startMode("open");
+  S.wind.base=0;S.wind.from=0;S.wind.speed=90;S.gusts.length=0;
+  Object.assign(S.ws,{drift:0,ref:0,announced:true,nextShift:1e9});S.shift=0;   // a steady practice wind: no shifts to report
+  S.boat.h=Math.PI/2;S.boat.u=20;S.boat.sheet=0.9;S.lastTwa=wrap(S.wind.from-S.boat.h);S.side=S.lastTwa>=0?1:-1;
+  K.capsize=0.8;S.tips=true;
+  S.obstacles=[];                                                  // clear water: nothing to hit while learning
+  S.lesson={i:-1};document.body.classList.add("lessonOn");$("modeName").textContent="Learn to sail";
+  show("lesson",true);lessonGo(0);
+}
+function endLesson(){S.lesson=null;document.body.classList.remove("lessonOn");show("lesson",false);$("lsRing").hidden=true;}
+function lessonGo(i){
+  const L=S.lesson;if(!L)return;
+  if(i>=LESSON.length){try{localStorage.setItem("closeHauledLessonDone","1");}catch(e){}endLesson();toMenu();return;}
+  const st=LESSON[i];
+  // the wind for this step: as set by this step, or the last step before it that changed it
+  let ws=90;for(let k=0;k<=i;k++)if(LESSON[k].ws)ws=LESSON[k].ws;
+  Object.assign(L,{i,age:0,holdT:0,done:false,armed:false,h0:S.boat.h,ws,wentOver:false,upT:0});
+  K.capsize=st.cap?0.62:0.8;
+  if(S.open){S.open.done.tack=false;S.open.done.gybe=false;}
+  $("lsStep").textContent=(i+1)+" / "+LESSON.length;$("lsTitle").textContent=st.t;$("lsText").innerHTML=st.x;
+  const st2=$("lsStatus");st2.className="";st2.textContent=st.next?"":"Try it…";
+  $("lsNext").hidden=!st.next;$("lsNext").textContent=st.finish?"Finish ⏎":"Next ⏎";$("lsSkip").hidden=!!st.finish;
+  $("lsBack").hidden=i===0;
+}
+$("lsNext").onclick=()=>{if(S.lesson)lessonGo(S.lesson.i+1);cv.focus();};
+$("lsSkip").onclick=()=>{if(S.lesson)lessonGo(S.lesson.i+1);cv.focus();};
+$("lsBack").onclick=()=>{if(S.lesson&&S.lesson.i>0)lessonGo(S.lesson.i-1);cv.focus();};
+// every frame: steady practice wind, check the goal, keep the ring on its target
+function stepLesson(dt){
+  const L=S.lesson;if(!L||S.paused)return;
+  const st=LESSON[L.i];L.age+=dt;L.upT=S.boat.capsized?0:L.upT+dt;if(S.boat.capsized)L.wentOver=true;
+  if(!st.goal||L.done)return;
+  // give time to read the card before anything counts, so a goal met by chance doesn't skip the lesson
+  const readT=clamp(st.x.replace(/<[^>]+>/g,"").split(/\s+/).length/4,3,8);
+  if(L.age<readT){L.holdT=0;$("lsStatus").textContent="Read, then try it…";return;}
+  if(!L.armed){L.armed=true;L.h0=S.boat.h;L.holdT=0;$("lsStatus").textContent="Your turn: try it…";}
+  if(!S.boat.capsized&&st.goal(L,dt)){
+    // done: say so, and wait for the player to move on when they're ready
+    L.done=true;const el=$("lsStatus");el.textContent="✓ Nicely done";el.className="done";sfx.chime();
+    $("lsNext").hidden=false;$("lsNext").textContent="Next ⏎";
+  }
+}
+function lessonWind(dt){
+  const L=S.lesson;if(!L)return;
+  S.gusts.length=0;S.wind.from=S.wind.base;S.wind.speed=approach(S.wind.speed,L.ws,25*dt);
+  S.ws.drift=0;S.ws.ref=S.wind.base;S.ws.nextShift=1e9;S.shift=0;
+}
+function capCall(){
+  const b=S.boat,el=$("capCall"),c=b&&b.capsized&&b.cap;
+  const show=!!c&&c.phase==="over"&&!S.paused;el.hidden=!show;if(!show)return;
+  $("capSub").textContent=c.swim<1?"to swim to the centreboard faster":c.lever>0.02?"keep holding: lean back and she'll come up":"to climb on the centreboard and pull her upright";
+}
+function placeLessonRing(){
+  const L=S.lesson,ring=$("lsRing");if(!L){ring.hidden=true;return;}
+  const hl=LESSON[L.i].hl;
+  if(!hl||hl[0]!=="#"){ring.hidden=true;return;}
+  const r=$(hl.slice(1)).getBoundingClientRect();
+  ring.hidden=r.width===0;ring.style.left=(r.left-6)+"px";ring.style.top=(r.top-6)+"px";ring.style.width=(r.width+12)+"px";ring.style.height=(r.height+12)+"px";
+}
+// rings on the water round the boat or the masthead flag
+function drawLessonMark(){
+  const L=S.lesson;if(!L)return;const hl=LESSON[L.i].hl;if(hl!=="boat"&&hl!=="flag")return;
+  const b=S.boat,P=boatFrame(b),c=hl==="flag"?toView(P(8,0,b.mastH||60)):toView({x:b.x,y:b.y,z:6});
+  const R=(hl==="flag"?16:44)+Math.sin(S.t*4)*3;
+  ctx.save();ctx.strokeStyle="#ffd447";ctx.lineWidth=2.5;ctx.globalAlpha=0.85;ctx.setLineDash([8,6]);ctx.lineDashOffset=-S.t*20;
+  ctx.beginPath();ctx.arc(c[0],c[1],R,0,TAU);ctx.stroke();ctx.restore();
+}
+
 const keys=new Set(), touchHeld=new Set();
 const MAP={left:["ArrowLeft","KeyA"],right:["ArrowRight","KeyD"],in:["ArrowUp","KeyW"],out:["ArrowDown","KeyS"],leanL:["KeyQ"],leanR:["KeyE"],up:["Space"]};
 const held=k=>touchHeld.has(k)||MAP[k].some(c=>keys.has(c));
@@ -724,6 +869,7 @@ window.addEventListener("keydown",e=>{
   if(e.repeat){keys.add(c);return;}
   keys.add(c);
   if(S.mode==="menu"){
+    if(c==="KeyL"||c==="Digit0"||c==="Numpad0")startLesson();
     if(c==="Digit1"||c==="Numpad1")startMode("open");
     if(c==="Digit2"||c==="Numpad2")startMode("race");
     if(c==="KeyN"){Snd.on=!Snd.on;try{localStorage.setItem("closeHauledSound",Snd.on?"1":"0");}catch(e){}}
@@ -732,7 +878,8 @@ window.addEventListener("keydown",e=>{
     return;
   }
   if(c==="KeyP"||c==="Escape"){if(!finishOpen())togglePause();}
-  else if(c==="KeyR")startMode(S.mode);
+  else if(c==="Enter"&&S.lesson&&(LESSON[S.lesson.i].next||S.lesson.done)){e.preventDefault();lessonGo(S.lesson.i+1);}
+  else if(c==="KeyR"){if(S.lesson)startLesson();else startMode(S.mode);}
   else if(c==="KeyM")toMenu();
   else if(c==="KeyT"&&!S.paused){S.auto=!S.auto;toast(S.auto?"Auto-trim on":"Auto-trim off","");}
   else if(c==="KeyI"){S.invert=!S.invert;try{localStorage.setItem("closeHauledInvert",S.invert?"1":"0");}catch(e){}toast(S.invert?"Swipe reversed":"Swipe normal","");}
@@ -873,6 +1020,7 @@ const sfx={
 function step(dt){
   S.t+=dt;
   updateWind(dt);
+  lessonWind(dt);
   const b=S.boat;
   stepFx(dt);
   if(S.mode==="race"){stepRaceClock();for(const ai of S.ais)stepAI(ai,dt);boatEncounters(dt);}
@@ -917,11 +1065,11 @@ function step(dt){
   const twa=wrap(S.wind.from-b.h), a=Math.abs(twa);
   if(a>0.2&&a<Math.PI/2){
     const sd=twa>=0?1:-1;
-    if(sd!==S.side){toast("Tacked","good");if(S.open)S.open.done.tack=true;}
+    if(sd!==S.side){if(lessonKnows("tack"))toast("Tacked","good");if(S.open)S.open.done.tack=true;}
     S.side=sd;
   }else if(a>=Math.PI/2)S.side=twa>=0?1:-1;
   if(S.lastLee&&F.lee!==S.lastLee&&Math.abs(F.awa)>Math.PI/2){
-    toast("Gybed!","good");sfx.boom();if(S.open)S.open.done.gybe=true;
+    if(lessonKnows("gybe"))toast("Gybed!","good");sfx.boom();if(S.open)S.open.done.gybe=true;
     b.hv+=F.lee*0.9*clamp(F.aws/150,0.3,1.2);                          // the boom's swing jolts her over
   }
   S.lastLee=F.lee;
@@ -1354,6 +1502,7 @@ function boatEncounters(dt){
 // ════════════════════════════════════════════════════════════════════
 function stepOpen(b,dt,px,py){
   const o=S.open;
+  if(S.lesson)return;                     // the lesson has its own goals
   o.dist+=Math.hypot(b.x-px,b.y-py);
   const kn=b.u/PX_PER_KN;
   o.top=Math.max(o.top,kn);
@@ -1619,7 +1768,7 @@ function drawFixedRefs(){
   }
   // kelp beds
   const KC=KELP_CELL;
-  if(FX.kelp)for(let i=Math.floor(x0/KC)-1;i<=Math.ceil(x1/KC);i++)for(let j=Math.floor(y0/KC)-1;j<=Math.ceil(y1/KC);j++){
+  if(FX.kelp&&!S.lesson)for(let i=Math.floor(x0/KC)-1;i<=Math.ceil(x1/KC);i++)for(let j=Math.floor(y0/KC)-1;j<=Math.ceil(y1/KC);j++){
     const bd=kelpBed(i,j);if(bd)drawKelpBed(bd.cx,bd.cy,bd.seed,kelpGeom(i,j));
   }
   // lobster-pot floats: bob in place, never drift
@@ -1678,6 +1827,7 @@ function kelpGeom(i,j){
 // 0 = clear water, 1 = right in the thick of a bed. One frond under the boat gives about half the drag;
 // two or more overlapping give the full amount.
 function kelpAt(x,y){
+  if(S.lesson)return 0;
   const i0=Math.floor(x/KELP_CELL),j0=Math.floor(y/KELP_CELL);let sum=0;
   for(let i=i0-1;i<=i0+1;i++)for(let j=j0-1;j<=j0+1;j++){
     const g=kelpGeom(i,j);if(!g||x<g.x0||x>g.x1||y<g.y0||y>g.y1)continue;
@@ -2130,7 +2280,7 @@ function balanceNeed(b,F){
   return want-b.crew;                                                // + = move to starboard
 }
 function drawBalanceGuide(){
-  const b=S.boat;if(b.capsized){S.balA=0;return;}
+  const b=S.boat;if(b.capsized||(S.lesson&&S.lesson.i<LESSON_BAL)){S.balA=0;return;}
   const need=balanceNeed(b,S.F),mag=Math.abs(need),hd=Math.abs(b.heel)*D;
   const show=mag>0.12||(mag>0.05&&hd>12);
   S.balA=approach(S.balA||0,show?1:0,(show?3:1.5)/60);             // fade in quickly, out gently
@@ -2914,7 +3064,7 @@ function updateHUD(){
   const pos=pointOfSail(twaD);
   $("posLabel").textContent=pos;
   $("posLabel").style.color=pos==="In irons"?"var(--bad)":"var(--ink)";
-  $("tackLabel").textContent=(twa>=0?"Starboard":"Port")+" tack · wind "+Math.round(twaD)+"° off the bow";
+  $("tackLabel").textContent=(lessonKnows("tack")?(twa>=0?"Starboard":"Port")+" tack · ":"")+"wind "+Math.round(twaD)+"° off the bow";
 
   // sail trim state + coaching
   const absA=Math.abs(F.awa), opt=bestBoom(absA), diff=F.boom-opt;
@@ -2950,7 +3100,7 @@ function updateHUD(){
   else if(pos==="Broad reach") tip="Broad reach: wind from behind your shoulder. Sail well out.";
   else tip="Running downwind: let the sail all the way out. Turning the stern through the wind swings the boom across (a gybe).";
   if(F.gust>0.08&&S.mode)tip+=" You're in a gust.";
-  const c=$("trimChip");c.textContent=chip;c.className="chip "+cls;
+  const c=$("trimChip");c.textContent=chip;c.className="chip "+cls;S.trimChip=chip;
   // beside the sail gauge: the same verdict, with the key that fixes it
   const hint=chip==="Too loose"||chip==="Luffing"?" ↑":chip==="Too tight"?" ↓":"";
   const st=$("sState");st.textContent=chip+hint;st.className="vstate "+cls;
@@ -3016,16 +3166,20 @@ function frame(now){
     drawFixedRefs();
     if(S.mode==="race")drawCourse();
     drawTrail();
+    if(live)stepLesson(dt);
     if(live){sampleWakes();sprayFrom(S.boat,S.F,dt);if(S.mode==="race")for(const ai of S.ais)sprayFrom(ai.b,ai.F,dt);}
     if(FX.wakes)drawWakes();
     drawFx("ring");
     if(!S.boat.capsized)drawMotion();
     if(FX.scene)drawScene();
     drawBalanceGuide();
+    drawLessonMark();
     drawFx("drop");
     drawEdgeArrow();
     drawCountdown();
     hudT+=dt;
+    placeLessonRing();
+    capCall();
     if(hudT>0.08){hudT=0;updateHUD();drawDial();if(S.mode==="race")drawMinimap();}
   }
   // frame-rate readout (F)
