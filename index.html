@@ -192,6 +192,18 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 @media (prefers-reduced-motion:reduce){.pb,.pbMain{animation:none}}
 .card h2{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:44px;line-height:1;margin:0 0 10px}
 .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+#replayBar{position:fixed;top:12px;left:0;right:0;margin:0 auto;width:max-content;z-index:12;display:flex;align-items:center;gap:10px;
+  background:rgba(5,27,36,.9);border:1px solid var(--panel-line);border-radius:12px;padding:8px 12px;box-shadow:0 8px 24px rgba(0,0,0,.35);
+  font:500 12px var(--mono);color:var(--ink);max-width:calc(100vw - 32px);flex-wrap:wrap;white-space:nowrap;justify-content:center}
+#replayBar .rTag{font-weight:700;letter-spacing:.14em;color:var(--bad);font-size:11px}
+#replayBar .rTag::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--bad);margin-right:6px;vertical-align:1px;animation:recBlink 1.2s steps(2) infinite}
+@keyframes recBlink{50%{opacity:.25}}
+#replayBar .rTime{min-width:62px;text-align:right;font-weight:700;font-size:14px}
+#replayBar input[type=range]{width:min(200px,22vw);accent-color:#ffd447}
+#replayBar button{cursor:pointer;font:600 12px var(--mono);color:var(--ink);background:rgba(255,255,255,.06);border:1px solid var(--panel-line);border-radius:6px;padding:4px 9px}
+#replayBar button[aria-pressed="true"]{background:#ffd447;color:#1d1503;border-color:#ffd447}
+#replayBar .rSeg{display:flex}#replayBar .rSeg button{border-radius:0}#replayBar .rSeg button:first-child{border-radius:6px 0 0 6px}#replayBar .rSeg button:last-child{border-radius:0 6px 6px 0}
+#replayBar .rDone{background:var(--signal);border-color:var(--signal);color:#1d0d02}
 .btn{cursor:pointer;padding:9px 16px;border-radius:8px;border:1.5px solid var(--panel-line);background:rgba(255,255,255,.06);font-weight:700}
 .btn.primary{background:var(--signal);border-color:var(--signal);color:#1d0d02}
 .table{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:4px}
@@ -236,6 +248,15 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 <canvas id="sea" tabindex="0" aria-label="Sailing game view"></canvas>
 <div id="light" aria-hidden="true"></div>
 <div id="perf" hidden></div>
+<div id="replayBar" hidden role="group" aria-label="Race replay">
+  <span class="rTag">Replay</span>
+  <button id="rpPlay" title="Play / pause (Space)">❚❚</button>
+  <span class="rTime" id="rpTime">0:00</span>
+  <input type="range" id="rpScrub" min="0" max="1000" value="0" aria-label="Replay position">
+  <span class="rSeg" id="rpSpeed"><button data-s="0.5">½×</button><button data-s="1" aria-pressed="true">1×</button><button data-s="2">2×</button><button data-s="4">4×</button></span>
+  <button id="rpFollow" title="Choose which boat to follow (Tab)">Follow: You</button>
+  <button class="rDone" id="rpDone" title="Back to results (Esc)">Done</button>
+</div>
 <section id="lesson" hidden aria-live="polite">
   <div class="lsHead"><span id="lsStep">1 / 11</span><h3 id="lsTitle">Welcome</h3></div>
   <p id="lsText"></p>
@@ -366,7 +387,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
       <span>Your penalties</span><span class="v" id="fPen"></span>
       <span>Personal best</span><span class="v" id="fBest"></span>
     </div>
-    <div class="btns"><button class="btn primary" id="again">Race again (R)</button><button class="btn" id="toMenu2">Menu (M)</button></div>
+    <div class="btns"><button class="btn primary" id="again">Race again (R)</button><button class="btn" id="watchReplay">Watch replay (V)</button><button class="btn" id="toMenu2">Menu (M)</button></div>
   </div>
 </div>
 
@@ -617,6 +638,7 @@ const DRILLS=[
 function showLessonTag(){let d=false;try{d=localStorage.getItem("closeHauledLessonDone")==="1";}catch(e){}
   const t=$("lessonTag");if(t)t.textContent=d?"✓ Done: you can take it again any time":"★ New? Start here";}
 function startMode(mode){
+  if(S.replay)endReplay(false);
   if(S.lesson)endLesson();
   setTimeout(warmPolar,0);
   S.mode=mode;S.paused=false;S.t=0;S.lastLee=null;S.trail=[];S.hitCd=0;S.auto=false;S.fx=[];S.ais=[];S.rowTip=null;
@@ -710,7 +732,7 @@ const $=id=>document.getElementById(id);
 function show(id,v){$(id).hidden=!v;}
 const finishOpen=()=>!$("finish").hidden;
 function togglePause(){S.paused=!S.paused;show("pause",S.paused);if(!S.paused)cv.focus();}
-function toMenu(){if(S.lesson)endLesson();showLessonTag();S.mode="menu";S.paused=false;show("pause",false);show("finish",false);show("hud",false);show("menu",true);$("goOpen").focus();}
+function toMenu(){if(S.replay)endReplay(false);if(S.lesson)endLesson();showLessonTag();S.mode="menu";S.paused=false;show("pause",false);show("finish",false);show("hud",false);show("menu",true);$("goOpen").focus();}
 function setLevel(k){
   levelKey=k;try{localStorage.setItem("closeHauledLevel",k);}catch(e){}
   document.querySelectorAll(".lvl").forEach(b=>b.setAttribute("aria-pressed",b.dataset.l===k?"true":"false"));
@@ -767,6 +789,10 @@ $("restart").onclick=()=>{if(S.lesson)startLesson();else startMode(S.mode);cv.fo
 $("goLesson").onclick=()=>startLesson();
 $("toMenu1").onclick=toMenu;$("toMenu2").onclick=toMenu;
 $("again").onclick=()=>startMode("race");
+$("watchReplay").onclick=startReplay;
+$("rpPlay").onclick=replayToggle;$("rpFollow").onclick=replayFollow;$("rpDone").onclick=()=>endReplay(true);
+$("rpScrub").oninput=e=>{const P=S.replay;if(!P)return;P.t=P.t0+(P.t1-P.t0)*e.target.value/1000;seekReplay(P.t,true);syncReplayBar();};
+document.querySelectorAll("#rpSpeed button").forEach(b=>b.onclick=()=>{if(S.replay){S.replay.speed=+b.dataset.s;syncReplayBar();}});
 function toast(text,cls){
   if(S.silent)return;
   const el=document.createElement("div");el.className="toast "+(cls||"");el.textContent=text;
@@ -856,7 +882,7 @@ function lessonWind(dt){
 }
 function capCall(){
   const b=S.boat,el=$("capCall"),c=b&&b.capsized&&b.cap;
-  const show=!!c&&c.phase==="over"&&!S.paused;el.hidden=!show;if(!show)return;
+  const show=!!c&&c.phase==="over"&&!S.paused&&!S.replay;el.hidden=!show;if(!show)return;
   $("capSub").textContent=c.swim<1?"to swim to the centreboard faster":c.lever>0.02?"keep holding: lean back and she'll come up":"to climb on the centreboard and pull her upright";
 }
 function placeLessonRing(){
@@ -892,6 +918,15 @@ window.addEventListener("keydown",e=>{
     if(c==="ArrowUp"||c==="ArrowDown"){const i=COURSE_KEYS.indexOf(courseKey)+(c==="ArrowDown"?1:-1);pickCourse(COURSE_KEYS[(i+COURSE_KEYS.length)%COURSE_KEYS.length]);}
     return;
   }
+  if(S.replay){
+    if(c==="Space"||c==="KeyP"){e.preventDefault();replayToggle();return;}
+    if(c==="Escape"||c==="KeyV"){endReplay(true);return;}
+    if(c==="ArrowLeft"){replaySeekBy(-5);return;}
+    if(c==="ArrowRight"){replaySeekBy(5);return;}
+    if(c==="Tab"){e.preventDefault();replayFollow();return;}
+    if(c==="KeyR"||c==="KeyM")endReplay(false);
+    else if(!["Equal","NumpadAdd","Minus","NumpadSubtract","KeyN","KeyF"].includes(c))return;
+  }else if(c==="KeyV"&&finishOpen()){startReplay();return;}
   if(c==="KeyP"||c==="Escape"){if(!finishOpen())togglePause();}
   else if(c==="Enter"&&S.lesson&&(LESSON[S.lesson.i].next||S.lesson.done)){e.preventDefault();lessonGo(S.lesson.i+1);}
   else if(c==="KeyR"){if(S.lesson)startLesson();else startMode(S.mode);}
@@ -910,7 +945,7 @@ window.addEventListener("keyup",e=>keys.delete(e.code));
 // only the part of the swipe across the boat counts, so fingers moving towards the boat's starboard side
 // on screen move the sailor to starboard. A swipe along the boat (bow to stern) does nothing.
 window.addEventListener("wheel",e=>{
-  if(S.mode==="menu"||S.paused||finishOpen())return;
+  if(S.mode==="menu"||S.paused||finishOpen()||S.replay)return;
   e.preventDefault();
   const b=S.boat;if(!b||b.capsized)return;
   let k=e.deltaMode===1?16:e.deltaMode===2?400:1;
@@ -1296,6 +1331,100 @@ function playerPosition(){
 }
 const ord=n=>n+(n===1?"st":n===2?"nd":n===3?"rd":"th");
 function fmt(t){const m=Math.floor(t/60),s=t-m*60;return m+":"+(s<10?"0":"")+s.toFixed(1);}
+// ---- race replay ----
+// While racing, every boat is recorded 20 times a second (position, heading, heel, sail, crew, plus the sail
+// forces the drawing needs) along with the wind and gusts. Playback lerps between frames, so it runs
+// smoothly at any speed, and redraws everything with the normal renderer.
+const REC_DT=0.05,REC_N=20;
+function recBoat(a,o,b,F){
+  a[o]=b.x;a[o+1]=b.y;a[o+2]=b.h;a[o+3]=b.u;a[o+4]=b.v;a[o+5]=b.rudder;a[o+6]=b.sheet;a[o+7]=b.boomDraw;a[o+8]=b.heel;
+  a[o+9]=b.hv;a[o+10]=b.crew;a[o+11]=b.capsized?1:0;a[o+12]=b.sailSide||0;
+  if(F){a[o+13]=F.awa;a[o+14]=F.aws;a[o+15]=F.boom;a[o+16]=F.alpha;a[o+17]=F.lee;a[o+18]=F.drive;a[o+19]=F.side;}
+}
+function recordRace(){
+  const r=S.race;if(!r||r.stage==="done"||S.replay)return;
+  const R=r.rec||(r.rec={t:[],f:[],cap:[],g:[]});
+  if(R.t.length&&S.t-R.t[R.t.length-1]<REC_DT-1e-6)return;
+  const boats=[[S.boat,S.F],...S.ais.map(a=>[a.b,a.F])],f=new Float32Array(2+boats.length*REC_N);
+  f[0]=S.wind.from;f[1]=S.wind.speed;
+  boats.forEach(([b,F],j)=>recBoat(f,2+j*REC_N,b,F));
+  R.t.push(S.t);R.f.push(f);
+  R.cap.push(boats.some(([b])=>b.cap)?boats.map(([b])=>b.cap?Object.assign({},b.cap):null):null);
+  const g=new Float32Array(S.gusts.length*4);S.gusts.forEach((q,i)=>{g[i*4]=q.x;g[i*4+1]=q.y;g[i*4+2]=q.r;g[i*4+3]=q.s;});R.g.push(g);
+}
+function applyBoat(b,F,A,B,o,k){
+  const L=i=>A[o+i]+(B[o+i]-A[o+i])*k;
+  b.x=L(0);b.y=L(1);b.h=wrap(A[o+2]+wrap(B[o+2]-A[o+2])*k);b.u=L(3);b.v=L(4);b.rudder=L(5);b.sheet=L(6);b.boomDraw=L(7);
+  b.heel=L(8);b.hv=L(9);b.crew=L(10);b.capsized=A[o+11]>0.5;b.sailSide=A[o+12]||b.sailSide;
+  F.awa=L(13);F.aws=L(14);F.boom=L(15);F.alpha=L(16);F.lee=A[o+17];F.drive=L(18);F.side=L(19);
+}
+function replayBoats(){return [S.boat,...S.ais.map(a=>a.b)];}
+function startReplay(){
+  const r=S.race,R=r&&r.rec;if(!R||R.t.length<2||S.replay)return;
+  const boats=replayBoats();
+  // keep the real end-of-race state, to put back afterwards
+  const saved={boats:boats.map(b=>Object.assign({},b,{cap:b.cap?Object.assign({},b.cap):null,wk:null})),
+    F:[S.F,...S.ais.map(a=>a.F)].map(F=>F?Object.assign({},F):null),wf:S.wind.from,ws:S.wind.speed,t:S.t,gusts:S.gusts,trail:S.trail};
+  S.F=Object.assign({},S.F||{});for(const a of S.ais)a.F=Object.assign({},a.F||{});
+  S.gusts=[];
+  const t0=Math.max(R.t[0],r.gun-8),t1=R.t[R.t.length-1]+1.5;
+  S.replay={t:t0,t0,t1,tEnd:R.t[R.t.length-1],speed:1,playing:true,follow:0,saved,lastT:-1,trailT:0,i:0};
+  show("finish",false);show("replayBar",true);
+  syncReplayBar();seekReplay(t0,true);$("rpPlay").focus();
+}
+function endReplay(back){
+  const P=S.replay;if(!P)return;
+  const boats=replayBoats(),sv=P.saved;
+  boats.forEach((b,j)=>{Object.assign(b,sv.boats[j]);b.wk=[];});
+  S.F=sv.F[0];S.ais.forEach((a,j)=>a.F=sv.F[j+1]);
+  S.wind.from=sv.wf;S.wind.speed=sv.ws;S.t=sv.t;S.gusts=sv.gusts;S.trail=sv.trail;S.fx=[];
+  S.replay=null;show("replayBar",false);
+  if(back){show("finish",true);$("watchReplay").focus();}
+}
+function seekReplay(t,jump){
+  const P=S.replay,R=S.race.rec,T=R.t;
+  const tc=Math.min(t,P.tEnd);
+  let i=P.i;if(T[i]>tc||jump)i=0;
+  while(i<T.length-2&&T[i+1]<=tc)i++;
+  P.i=i;
+  const A=R.f[i],B=R.f[Math.min(i+1,T.length-1)],k=clamp((tc-T[i])/((T[i+1]-T[i])||1),0,1);
+  S.wind.from=wrap(A[0]+wrap(B[0]-A[0])*k);S.wind.speed=A[1]+(B[1]-A[1])*k;
+  const boats=replayBoats(),Fs=[S.F,...S.ais.map(a=>a.F)];
+  boats.forEach((b,j)=>{applyBoat(b,Fs[j],A,B,2+j*REC_N,k);const c=R.cap[i]&&R.cap[i][j];b.cap=c?Object.assign({},c):null;});
+  const G=R.g[i];S.gusts.length=0;for(let q=0;q+3<G.length;q+=4)S.gusts.push({x:G[q],y:G[q+1],r:G[q+2],s:G[q+3]});
+  const back=t<P.lastT-1e-6||jump||t-P.lastT>1;
+  S.t=t;
+  if(back){
+    // jumped: start the wakes afresh and rebuild the breadcrumb trail up to here
+    for(const b of boats)b.wk=[];S.fx=[];
+    S.trail=[];for(let q=0;q<=i;q+=2){const f=R.f[q];S.trail.push({x:f[2],y:f[3],h:f[4],s:Math.abs(f[5])});}
+    if(S.replay.follow===0){S.cam.x=S.boat.x;S.cam.y=S.boat.y;}
+  }else if((P.trailT+=t-P.lastT)>0.08){P.trailT=0;S.trail.push({x:S.boat.x,y:S.boat.y,h:S.boat.h,s:Math.abs(S.boat.u)});}
+  P.lastT=t;
+}
+function stepReplay(dt){
+  const P=S.replay,h=P.playing?dt*P.speed:0;
+  if(P.playing){P.t=Math.min(P.t1,P.t+h);if(P.t>=P.t1)P.playing=false;}
+  seekReplay(P.t,false);
+  if(h>0){
+    stepFx(h);sampleWakes();
+    sprayFrom(S.boat,S.F,h);for(const ai of S.ais)sprayFrom(ai.b,ai.F,h);
+  }
+  syncReplayBar();
+}
+let rbT=0;
+function syncReplayBar(){
+  const P=S.replay;if(!P)return;
+  const rt=P.t-S.race.gun,a=Math.abs(rt);
+  $("rpTime").textContent=(rt<0?"−":"")+Math.floor(a/60)+":"+String(Math.floor(a%60)).padStart(2,"0");
+  if(document.activeElement!==$("rpScrub"))$("rpScrub").value=Math.round((P.t-P.t0)/(P.t1-P.t0)*1000);
+  $("rpPlay").textContent=P.playing?"❚❚":"▶";
+  $("rpFollow").textContent="Follow: "+(P.follow===0?"You":S.ais[P.follow-1].name);
+  document.querySelectorAll("#rpSpeed button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.s===P.speed?"true":"false"));
+}
+function replayToggle(){const P=S.replay;if(!P)return;if(!P.playing&&P.t>=P.t1-0.01){P.t=P.t0;seekReplay(P.t,true);}P.playing=!P.playing;syncReplayBar();}
+function replayFollow(){const P=S.replay;if(!P)return;P.follow=(P.follow+1)%(S.ais.length+1);syncReplayBar();}
+function replaySeekBy(d){const P=S.replay;if(!P)return;P.t=clamp(P.t+d,P.t0,P.t1);seekReplay(P.t,true);syncReplayBar();}
 function finishRace(){
   const r=S.race;
   r.finishT=r.time+r.pen;
@@ -3174,7 +3303,12 @@ function updateHUD(){
   st.style.top=$("tSheet").style.top||"50%";$("tSheet").className="tick "+cls;
   $("tip").textContent=tip;
 
-  if(S.mode==="race"){
+  if(S.mode==="race"&&S.replay){
+    const P=S.replay,rt=P.t-S.race.gun;
+    $("statusMain").textContent=rt<0?"−"+fmt(-rt).replace(/\.\d$/,""):fmt(rt);
+    $("statusSub").innerHTML="<b>Replay</b> · following "+(P.follow?S.ais[P.follow-1].name:"you");
+    $("tip").textContent="Watching the replay. Space pauses, ← → skip 5 seconds, Tab follows another boat, Esc goes back to the results.";
+  }else if(S.mode==="race"){
     const r=S.race;
     const rem=r.gun-S.t;
     $("statusMain").textContent=r.stage==="pre"?"−"+fmt(Math.max(0,rem)).replace(/\.\d$/,""):fmt(r.time)+(r.pen?"  +"+r.pen+"s":"");
@@ -3212,7 +3346,8 @@ function frame(now){
   // physics: advance by exactly the time since the last frame, in equal sub-steps of at most 1/120 s,
   // so every frame moves things by the right amount (a fixed step with a carried-over remainder made
   // some frames take one step and others two or three, which looked jittery)
-  if(live){const n=Math.max(1,Math.ceil(dt*120-1e-6)),h=dt/n;for(let i=0;i<n;i++)step(h);}
+  if(live){const n=Math.max(1,Math.ceil(dt*120-1e-6)),h=dt/n;for(let i=0;i<n;i++){step(h);if(S.mode==="race")recordRace();}}
+  else if(S.replay)stepReplay(dt);
   else{S.t+=dt*(S.paused?0:1);if(S.mode==="menu"){S.cam.x+=Math.sin(S.t*0.05)*0.2;updateWind(dt);}}
   // waves and streaks move at a speed set by the wind, accumulated frame by frame so a change in
   // wind strength changes their speed smoothly instead of making them jump
@@ -3220,7 +3355,7 @@ function frame(now){
     const v=S.wind.speed*0.09*dt;S.chopX=((S.chopX||0)-Math.sin(S.wind.from)*v)%9728;S.chopY=((S.chopY||0)+Math.cos(S.wind.from)*v)%9728;}  // 9728 keeps every texture layer seamless when it wraps
   S.zoom=clamp(Math.min(W,H)/780,0.55,1.15)*ZOOM.k;            // fits the window, times the player's zoom (+ / −)
   if(S.boat&&S.mode!=="menu"){
-    const b=S.boat,la=0.9;
+    const b=S.replay&&S.replay.follow?S.ais[S.replay.follow-1].b:S.boat,la=0.9;
     const tx=b.x+Math.sin(b.h)*b.u*la,ty=b.y-Math.cos(b.h)*b.u*la;
     const k=reduce?1:1-Math.exp(-3*dt);
     S.cam.x+=(tx-S.cam.x)*k;S.cam.y+=(ty-S.cam.y)*k;
