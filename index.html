@@ -1338,9 +1338,9 @@ function celebrate(){
 // COMPUTER BOATS AND RIGHT OF WAY
 // ════════════════════════════════════════════════════════════════════
 const AI_CREW=[
-  {name:"Blue Bosun",  look:{stripe:"#3f8ef0",sail:"rgba(208,228,255,0.93)",shirt:"#2a64c8",top:"#e9eef2",skin:"#b97a52",hat:"#1d2a3a",legs:"#1f2a36"},skill:0.88,lineX:-170,x:-60, y:210,h:Math.PI/2},
-  {name:"Green Galleon", look:{stripe:"#3cc483",sail:"rgba(214,246,228,0.93)",shirt:"#1f9a60",top:"#2b2f33",skin:"#7d4f33",hat:"#f2c94b",legs:"#2b2f33"},skill:0.955,lineX:20, y:190,x:120, h:-Math.PI/2},
-  {name:"Purple Puffin",look:{stripe:"#b07cf2",sail:"rgba(236,224,255,0.93)",shirt:"#7a4cc4",top:"#f2f2f2",skin:"#f0c8a4",hat:null,hair:"#b8652a",legs:"#3a2f4a"},skill:0.975,lineX:170,x:260,y:230,h:-Math.PI/2}
+  {name:"Blue Bosun",  look:{stripe:"#3f8ef0",sail:"rgba(208,228,255,0.93)",shirt:"#2a64c8",top:"#e9eef2",skin:"#b97a52",hat:"#1d2a3a",legs:"#1f2a36"},skill:0.6,lineX:-170,x:-60, y:210,h:Math.PI/2},
+  {name:"Green Galleon", look:{stripe:"#3cc483",sail:"rgba(214,246,228,0.93)",shirt:"#1f9a60",top:"#2b2f33",skin:"#7d4f33",hat:"#f2c94b",legs:"#2b2f33"},skill:0.8,lineX:20, y:190,x:120, h:-Math.PI/2},
+  {name:"Purple Puffin",look:{stripe:"#b07cf2",sail:"rgba(236,224,255,0.93)",shirt:"#7a4cc4",top:"#f2f2f2",skin:"#f0c8a4",hat:null,hair:"#b8652a",legs:"#3a2f4a"},skill:0.97,lineX:170,x:260,y:230,h:-Math.PI/2}
 ];
 function makeAI(c){
   const p=fromWF(c.x,c.y),b=newBoat(p.x,p.y,c.h+CR.a);b.u=45;b.look=c.look;     // already sailing slowly on a reach, as boats are near the start
@@ -2865,8 +2865,9 @@ function drawEdgeArrow(){
   ctx.setTransform(DPR,0,0,DPR,0,0);
   const sx=W/2+(t.x-S.cam.x)*S.zoom,sy=H/2+(t.y-S.cam.y)*S.zoom,m=56;
   if(sx>m&&sx<W-m&&sy>m+60&&sy<H-m)return;
-  const dx=sx-W/2,dy=sy-H/2,a=Math.atan2(dy,dx);
-  const kx=(W/2-m)/Math.abs(dx||1e-6),ky=(H/2-m)/Math.abs(dy||1e-6),k=Math.min(kx,ky);
+  // the arrow sits well inside the screen, on a ring a quarter of the way in, clear of the panels at the edges
+  const dx=sx-W/2,dy=sy-H/2,a=Math.atan2(dy,dx),pm=Math.max(150,Math.min(W,H)*0.25);
+  const kx=(W/2-pm)/Math.abs(dx||1e-6),ky=(H/2-pm)/Math.abs(dy||1e-6),k=Math.min(kx,ky);
   const ax=W/2+dx*k,ay=H/2+dy*k;
   ctx.save();ctx.translate(ax,ay);
   ctx.fillStyle="rgba(5,27,36,0.85)";ctx.beginPath();ctx.arc(0,0,24,0,TAU);ctx.fill();
