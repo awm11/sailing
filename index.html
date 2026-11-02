@@ -40,7 +40,12 @@ body{background:var(--sea-deep);color:var(--ink);font-family:var(--body);font-si
 #lsStep{font-family:var(--mono);font-size:12px;color:var(--mark);font-weight:700}
 #lsTitle{margin:0;font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:24px;letter-spacing:.02em;line-height:1}
 #lsText{margin:6px 0 10px;font-size:14.5px;line-height:1.45}
-.lsBtns{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.lsPad{float:right;display:flex;flex-direction:column;align-items:center;margin:2px 0 4px 14px}
+.lsPad small{font-size:10px;color:var(--muted);font-weight:700;margin-top:1px}
+.lsFingers{animation:lsSwipe 1.8s ease-in-out infinite}
+@keyframes lsSwipe{0%,100%{transform:translateX(-22px)}50%{transform:translateX(22px)}}
+@media (prefers-reduced-motion:reduce){.lsFingers{animation:none}}
+.lsBtns{clear:both;display:flex;align-items:center;gap:8px;justify-content:flex-end}
 .lsBtns .btn{padding:6px 14px}
 #lsStatus{margin-right:auto;font-weight:700;font-size:13px;color:var(--muted)}
 #lsStatus.done{color:var(--good)}
@@ -401,7 +406,7 @@ const PX_PER_KN=12, PX_PER_M=10;
 // PHYSICS-START
 // Units: px and seconds. Heading 0 = north (screen up), clockwise positive.
 const K={sail:0.0024,drag:0.0017,lin:0.012,lat:3.2,side:0.10,windage:0.0001,rud:0.35,turn:0.016,turnBase:0.18,sheetMin:0.08,sheetMax:1.5,
-  heelWind:0.016,crew:0.6,heelK:9,heelDamp:3.2,helm:0.8,capsize:0.70};
+  heelWind:0.016,crew:0.6,heelK:9,heelDamp:3.2,helm:0.6,capsize:0.70};
 // Sail force coefficient by angle of attack (flat-plate with a lift boost at small angles)
 const sailCoef=al=>al<=0?0:Math.min(1,1.7*Math.sin(al));
 // Best boom angle for a given apparent wind angle (maximises forward drive)
@@ -451,7 +456,10 @@ function integrate(b,F,dt){
     yaw+=(F.awa>=0?-1:1)*0.2*irons;
     yaw+=b.rudder*0.55*irons;
   }
-  yaw-=K.helm*(b.heel||0)*clamp(b.u/60,0,1);                       // weather helm: heeling turns the bow into the wind
+  // weather helm: heeling turns the bow into the wind. It fades as the bow nears the wind and the sail loses
+  // drive (in a real boat she stands up and stops turning), so a boat left alone settles just short of the
+  // no-go zone instead of being dragged into it.
+  yaw-=K.helm*(b.heel||0)*clamp(b.u/60,0,1)*clamp((Math.abs(F.awa)-0.62)/0.35,0,1);
   b.h=wrap(b.h+yaw*dt);
   const fx=Math.sin(b.h),fy=-Math.cos(b.h),rx=Math.cos(b.h),ry=Math.sin(b.h);
   b.x+=(b.u*fx+b.v*rx)*dt; b.y+=(b.u*fy+b.v*ry)*dt;
@@ -776,7 +784,7 @@ const LESSON=[
     goal:(L,dt)=>holdFor(L,S.trimChip==="Good"&&S.boat.u>10,3,dt)},
   {t:"Speed",hl:"#instr",x:"Bottom right is your speed, and how close it is to the best this boat could do at this angle. Fastest is usually with the wind from the side (a <b>beam reach</b>). Keep the sail in the green and hold at least <b>3.5 knots</b> for a few seconds.",
     goal:(L,dt)=>holdFor(L,S.boat.u/PX_PER_KN>=3.5,3,dt)},
-  {t:"Balance",hl:"boat",ws:170,bal:true,x:"Now <b>the wind is picking up</b>, to about 14 knots. It pushes the boat over, which slows you and can capsize you. Lean out with <kbd>Q</kbd> / <kbd>E</kbd>, or swipe two fingers across the boat. From now on, <b>yellow chevrons</b> by the boat point the way to move (red means you're close to going over). Keep her nearly flat for 4 seconds.",
+  {t:"Balance",hl:"boat",ws:170,bal:true,x:"<span class=\"lsPad\" aria-hidden=\"true\"><svg viewBox=\"0 0 96 66\" width=\"96\" height=\"66\"><rect x=\"3\" y=\"3\" width=\"90\" height=\"60\" rx=\"9\" fill=\"rgba(160,214,214,.10)\" stroke=\"rgba(160,214,214,.55)\" stroke-width=\"1.5\"/><path d=\"M14 33h68M14 33l7-5M14 33l7 5M82 33l-7-5M82 33l-7 5\" stroke=\"#ffd447\" stroke-width=\"2\" fill=\"none\" stroke-linecap=\"round\"/><g class=\"lsFingers\"><circle cx=\"42\" cy=\"22\" r=\"6.5\" fill=\"#e8bd94\" stroke=\"#5a3e2b\" stroke-width=\"1\"/><circle cx=\"54\" cy=\"25\" r=\"6.5\" fill=\"#e8bd94\" stroke=\"#5a3e2b\" stroke-width=\"1\"/></g></svg><small>two fingers</small></span><b>The wind is picking up</b>, and <b>you take over the balancing</b>: so far your sailor has been doing it for you. Lean your sailor in or out of the boat to keep it balanced. The <b>yellow chevrons</b> show which way to lean. Use two fingers on the trackpad (or <kbd>Q</kbd> / <kbd>E</kbd>). Keep her flat for 4 seconds.",
     goal:(L,dt)=>holdFor(L,Math.abs(S.boat.heel)<0.21&&S.boat.u>25&&L.age>2,4,dt)},
   {t:"Tacking",hl:"#dialPanel",ws:120,x:"<b>The wind has eased again</b>, to 10 knots. To get upwind you zig-zag. Steer the bow round <b>through the wind</b> (through the red zone on the dial) until the sail swaps sides. Keep the turn going so you don't stop head to wind. If you do get stuck (in irons), hold the rudder over until the bow swings away.",
     goal:(L)=>!!S.open.done.tack},
@@ -1025,6 +1033,9 @@ function step(dt){
   stepFx(dt);
   if(S.mode==="race"){stepRaceClock();for(const ai of S.ais)stepAI(ai,dt);boatEncounters(dt);}
   if(b.capsized){stepCapsized(b,dt);return;}
+  // in the lesson, until balancing has been taught, the sailor keeps the boat flat by themselves
+  // (heeling makes a boat turn into the wind, which would fight a beginner's steering)
+  if(S.lesson&&S.lesson.i<LESSON_BAL&&S.F)b.crew=approach(b.crew,clamp(-K.heelWind*S.F.side/K.crew-b.heel*1.6,-1,1),1.2*dt);
   if(held("leanL"))b.crew=Math.max(-1,b.crew-1.4*dt);
   if(held("leanR"))b.crew=Math.min(1,b.crew+1.4*dt);
   const target=(held("right")?1:0)-(held("left")?1:0);
