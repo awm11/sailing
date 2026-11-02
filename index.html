@@ -241,7 +241,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
     <section class="panel" id="instr">
       <div class="readout"><span class="lbl">Boat speed</span><span class="val" id="rSpeed">0.0<small>kn</small></span><span class="sub" id="rPct">&nbsp;</span></div>
       <div class="readout"><span class="lbl" id="r2Lbl">Towards mark</span><span class="val" id="r2">0.0<small>kn</small></span><span class="sub" id="r2Sub">&nbsp;</span></div>
-      <div class="keys"><kbd>←</kbd><kbd>→</kbd> steer · <kbd>↑</kbd><kbd>↓</kbd> sail in / out · <kbd>Q</kbd><kbd>E</kbd> or two-finger swipe across the boat: lean · <kbd>Space</kbd> right a capsize · <kbd>T</kbd> auto-trim <span id="autoTag"></span> · <kbd>N</kbd> sound · <kbd>P</kbd> pause</div>
+      <div class="keys"><kbd>←</kbd><kbd>→</kbd> steer · <kbd>↑</kbd><kbd>↓</kbd> sail in / out · <kbd>Q</kbd><kbd>E</kbd> or two-finger swipe across the boat: lean · <kbd>Space</kbd> right a capsize · <kbd>T</kbd> auto-trim <span id="autoTag"></span> · <kbd>N</kbd> sound · <kbd>+</kbd><kbd>−</kbd> zoom · <kbd>P</kbd> pause</div>
     </section>
   </div>
 </div>
@@ -302,6 +302,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
       <span><kbd>T</kbd></span><span>Auto-trim on / off</span>
       <span><kbd>N</kbd></span><span>Sound on / off</span>
       <span><kbd>H</kbd></span><span>Coaching tips on / off</span>
+      <span><kbd>+</kbd> <kbd>−</kbd></span><span>Zoom in / out</span>
       <span><kbd>F</kbd></span><span>Show frame rate</span>
       <span><kbd>B</kbd></span><span>Graphics benchmark (about 25 seconds)</span>
       <span><kbd>R</kbd></span><span>Restart this mode</span>
@@ -727,6 +728,8 @@ window.addEventListener("keydown",e=>{
   else if(c==="KeyT"&&!S.paused){S.auto=!S.auto;toast(S.auto?"Auto-trim on":"Auto-trim off","");}
   else if(c==="KeyI"){S.invert=!S.invert;try{localStorage.setItem("closeHauledInvert",S.invert?"1":"0");}catch(e){}toast(S.invert?"Swipe reversed":"Swipe normal","");}
   else if(c==="KeyN"){Snd.on=!Snd.on;try{localStorage.setItem("closeHauledSound",Snd.on?"1":"0");}catch(e){}toast(Snd.on?"Sound on":"Sound off","");}
+  else if(c==="Equal"||c==="NumpadAdd")setZoom(ZOOM.k*1.15);
+  else if(c==="Minus"||c==="NumpadSubtract")setZoom(ZOOM.k/1.15);
   else if(c==="KeyF"){$("perf").hidden=!$("perf").hidden;$("perf").style.whiteSpace="";}
   else if(c==="KeyB"&&S.mode!=="menu"&&!bench)startBench();
   else if(c==="KeyH"){S.tips=!S.tips;document.getElementById("tipPanel").style.visibility=S.tips?"visible":"hidden";}
@@ -2966,7 +2969,7 @@ function frame(now){
   // wind strength changes their speed smoothly instead of making them jump
   if(!S.paused){const rate=S.wind.speed/110;S.wavePh=((S.wavePh||0)+dt*0.22*rate)%1000;S.streakPh=((S.streakPh||0)+dt*0.11*rate)%1000;
     const v=S.wind.speed*0.09*dt;S.chopX=((S.chopX||0)-Math.sin(S.wind.from)*v)%9728;S.chopY=((S.chopY||0)+Math.cos(S.wind.from)*v)%9728;}  // 9728 keeps every texture layer seamless when it wraps
-  S.zoom=clamp(Math.min(W,H)/780,0.55,1.15);
+  S.zoom=clamp(Math.min(W,H)/780,0.55,1.15)*ZOOM.k;            // fits the window, times the player's zoom (+ / −)
   if(S.boat&&S.mode!=="menu"){
     const b=S.boat,la=0.9;
     const tx=b.x+Math.sin(b.h)*b.u*la,ty=b.y-Math.cos(b.h)*b.u*la;
@@ -2999,6 +3002,9 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 const perf={n:0,ms:0,t:0};
+// how close the camera is: + and − change it, remembered between visits
+const ZOOM={k:1.3};try{const z=parseFloat(localStorage.getItem("closeHauledZoom"));if(z>0)ZOOM.k=z;}catch(e){}
+function setZoom(k){ZOOM.k=clamp(k,0.7,2.2);try{localStorage.setItem("closeHauledZoom",String(ZOOM.k));}catch(e){}toast("Zoom "+Math.round(ZOOM.k/1.3*100)+"%","");}
 // Benchmark (B): freezes the game, then turns each part of the picture off in turn for a moment and
 // measures the frame rate, so the costly parts on this computer show up. Results stay on screen.
 let bench=null;
