@@ -381,7 +381,16 @@ function sailForces(b,W,from){
   const pt=clamp((absA-0.36)/0.26,0,1);                             // sails can't work pointing near the wind
   const tip=Math.pow(Math.max(0,Math.cos(b.heel||0)),1.5);             // a heeled sail catches less wind
   const Fn=K.sail*aws*aws*sailCoef(alpha)*pt*pt*(3-2*pt)*tip;
-  const lee=awa>=0?-1:1;                                           // leeward side: +1 = starboard
+  // Which side the sail is on (+1 = starboard). Normally the leeward side. Going past dead downwind the sail
+  // stays where it is ("sailing by the lee") until the wind gets behind it, about 15° past (true wind), sooner with
+  // the sail pulled in: then it slams across. That's a gybe. Forward of the beam it just flops across as it
+  // luffs through the wind, as in a tack.
+  const nat=awa>=0?-1:1;let lee=b.sailSide||nat;
+  if(lee!==nat){
+    const byLee=Math.PI-absA;                                        // how far past dead downwind
+    if(absA<Math.PI/2||byLee>(b.sheet<0.6?0.22:0.5))lee=nat;
+  }
+  b.sailSide=lee;
   const drive=Fn*Math.sin(boom), side=Fn*Math.cos(boom)*lee;
   const wu=K.windage*aws*(ax*fx+ay*fy), wv=K.windage*aws*(ax*rx+ay*ry);
   return {awa,aws,boom,alpha,lee,drive,side,fu:drive+wu,fv:side*K.side+wv};
@@ -550,7 +559,7 @@ const DRILLS=[
 
 function startMode(mode){
   setTimeout(warmPolar,0);
-  S.mode=mode;S.paused=false;S.t=0;S.trail=[];S.hitCd=0;S.auto=false;S.fx=[];S.ais=[];S.rowTip=null;
+  S.mode=mode;S.paused=false;S.t=0;S.lastLee=null;S.trail=[];S.hitCd=0;S.auto=false;S.fx=[];S.ais=[];S.rowTip=null;
   K.capsize=LV().capsize;
   if(mode==="open"){
     S.wind.base=0.6;S.wind.from=0.6;S.wind.speed=LV().start;
@@ -890,7 +899,7 @@ function step(dt){
   F.kelp=kelp;
   S.F=F;
   // boom swings across through the centreline on a tack or gybe
-  b.boomDraw=approach(b.boomDraw,F.boom*F.lee,4.5*dt);
+  b.boomDraw=approach(b.boomDraw,F.boom*F.lee,(Math.sign(b.boomDraw)!==F.lee&&Math.abs(F.awa)>Math.PI/2?11:4.5)*dt);   // a gybing boom slams across
   if(stepHeel(b,F,dt)){capsize(b);return;}
 
   // wind shift announcements: lift = wind moved aft (you can point higher), header = moved towards the bow
@@ -904,17 +913,18 @@ function step(dt){
     if(Math.abs(sh)<4)S.ws.announced=false;
   }
 
-  // tack / gybe detection
+  // tack: the bow has turned through the wind. Gybe: the sail itself has slammed across.
   const twa=wrap(S.wind.from-b.h), a=Math.abs(twa);
-  if(a>0.2&&a<Math.PI-0.2){
+  if(a>0.2&&a<Math.PI/2){
     const sd=twa>=0?1:-1;
-    if(sd!==S.side){
-      const kind=a<Math.PI/2?"tack":"gybe";
-      toast(kind==="tack"?"Tacked":"Gybed!","good");if(kind==="gybe")sfx.boom();
-      if(S.open)S.open.done[kind]=true;
-      S.side=sd;
-    }
+    if(sd!==S.side){toast("Tacked","good");if(S.open)S.open.done.tack=true;}
+    S.side=sd;
+  }else if(a>=Math.PI/2)S.side=twa>=0?1:-1;
+  if(S.lastLee&&F.lee!==S.lastLee&&Math.abs(F.awa)>Math.PI/2){
+    toast("Gybed!","good");sfx.boom();if(S.open)S.open.done.gybe=true;
+    b.hv+=F.lee*0.9*clamp(F.aws/150,0.3,1.2);                          // the boom's swing jolts her over
   }
+  S.lastLee=F.lee;
   collide(b,dt);
   if(S.mode==="open")stepOpen(b,dt,px,py);
   else stepRace(b,dt,px,py);
@@ -1270,7 +1280,7 @@ function stepAI(ai,dt){
   integrate(b,F,dt);
   const kelp=kelpAt(b.x,b.y);if(kelp>0){b.u-=b.u*0.9*kelp*dt;b.v-=b.v*0.9*kelp*dt;}
   if(stepHeel(b,F,dt)){b.heel=Math.sign(b.heel)*0.62;b.hv=0;}      // computer sailors never quite go over
-  b.boomDraw=approach(b.boomDraw,F.boom*F.lee,4.5*dt);
+  b.boomDraw=approach(b.boomDraw,F.boom*F.lee,(Math.sign(b.boomDraw)!==F.lee&&Math.abs(F.awa)>Math.PI/2?11:4.5)*dt);   // a gybing boom slams across
   ai.F=F;
   bounceOff(b);
   trackRacer(rs,b,px,py,false);
@@ -2388,13 +2398,34 @@ function drawRig(b,sp,mastBase,mastTop,F,ah,look=PLAYER_LOOK){
   const mb=toView(mastBase),mt=toView(mastTop);
   ctx.strokeStyle="#26343a";ctx.lineWidth=2.8;ctx.beginPath();ctx.moveTo(mb[0],mb[1]);ctx.lineTo(mt[0],mt[1]);ctx.stroke();
   ctx.strokeStyle="rgba(210,225,230,0.6)";ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(mb[0]-0.9,mb[1]);ctx.lineTo(mt[0]-0.9,mt[1]);ctx.stroke();
-  // masthead wind indicator: points where the apparent wind is blowing
-  if(F&&!b.capsized&&b===S.boat){
-    const mxw=mt[0],myw=mt[1];
-    const dirTo=b.h+F.awa+Math.PI, ux=Math.sin(dirTo),uy=-Math.cos(dirTo);
-    ctx.strokeStyle="#ff7b30";ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(mxw-ux*6,myw-uy*6);ctx.lineTo(mxw+ux*11,myw+uy*11);ctx.stroke();
-    ctx.fillStyle="#ff7b30";ctx.beginPath();ctx.moveTo(mxw+ux*14,myw+uy*14);ctx.lineTo(mxw+ux*7-uy*4,myw+uy*7+ux*4);ctx.lineTo(mxw+ux*7+uy*4,myw+uy*7-ux*4);ctx.closePath();ctx.fill();
+  // Masthead flag: a strip of cloth hanging from the top of the mast, streaming away from the apparent wind
+  // (the wind you feel on the moving boat). It hangs vertically, so from above we see mostly its top edge
+  // plus a little of its depth; the flutter shows as sideways folds, each shaded by whether it faces the sun.
+  if(F&&!b.capsized){
+    const dirTo=b.h+F.awa+Math.PI,ux=Math.sin(dirTo),uy=-Math.cos(dirTo),nx=-uy,ny=ux;
+    const sc=b.scale||1,L=19*sc,hg=8*sc,n=8,spd=9+F.aws*0.07,amp=(0.6+Math.min(2.4,F.aws*0.014))*sc,ph=b.x*0.013;
+    const top=mastTop,wv=k=>{const t=k/n;return (Math.sin(S.t*spd-k*1.15+ph)+0.35*Math.sin(S.t*spd*1.7-k*0.8))*amp*t;};
+    const edge=(k,low)=>{const t=k/n,w=wv(k);
+      return {x:top.x+ux*L*t+nx*w,y:top.y+uy*L*t+ny*w,z:top.z-(low?hg*(1-0.8*t):0.6*t*sc)};};   // tapers to the tip, drooping slightly
+    const c=hexRGB(look.stripe||"#ff7b30");
+    // faint shadow on the water
+    ctx.fillStyle="rgba(0,12,22,0.16)";ctx.beginPath();
+    for(let k=0;k<=n;k++){const q=toShadow(edge(k,false));k?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);}
+    for(let k=n;k>=0;k--){const q=toShadow(edge(k,true));ctx.lineTo(q[0],q[1]);}ctx.fill();
+    for(let k=0;k<n;k++){
+      const a0=edge(k,false),a1=edge(k+1,false),b1=edge(k+1,true),b0=edge(k,true);
+      // which way this fold faces: its sideways tilt against the sun's direction
+      const slope=(wv(k+1)-wv(k))/(L/n),face=(nx*-0.55+ny*-0.5)-slope*(ux*-0.55+uy*-0.5);
+      ctx.fillStyle=rgb(c,0.78+0.32*clamp(face,-1,1));
+      poly([a0,a1,b1,b0],toView);ctx.fill();
+    }
+    // thin dark outline so the cloth reads against the mast and the water
+    ctx.strokeStyle="rgba(10,20,26,0.55)";ctx.lineWidth=0.9;ctx.lineJoin="round";ctx.beginPath();
+    for(let k=0;k<=n;k++){const q=toView(edge(k,false));k?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);}
+    for(let k=n;k>=0;k--){const q=toView(edge(k,true));ctx.lineTo(q[0],q[1]);}ctx.closePath();ctx.stroke();
+    ctx.strokeStyle=rgb(c,1.2);ctx.lineWidth=0.8;ctx.beginPath();                       // sunlit top edge
+    for(let k=0;k<=n;k++){const q=toView(edge(k,false));k?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);}ctx.stroke();
+    ctx.fillStyle="#26343a";ctx.beginPath();ctx.arc(mt[0],mt[1],1.5*sc,0,TAU);ctx.fill();   // masthead
   }
 }
 // ---- people ----
@@ -2905,6 +2936,7 @@ function updateHUD(){
   else if(S.mode==="race"&&S.race.ocs) tip="You crossed the line before the gun. Sail back to the downwind side of the dashed line, then cross again once the race has started.";
   else if(S.mode==="race"&&S.race.stage==="pre") tip="Stay behind (downwind of) the dashed line. Time your run so you are moving fast and cross it just after the countdown hits zero. Crossing early means going back.";
   else if(S.mode==="race"&&!S.race.started) tip="The race has started! Cross the start line going upwind.";
+  else if(Math.abs(F.awa)>Math.PI*0.88&&F.lee===(F.awa>=0?1:-1)) tip="Sailing by the lee: the wind is coming from the same side as the sail and getting behind it. Turn a little back towards the wind, or the boom will slam across (a gybe).";
   else if(twaD<42&&Math.abs(kn)<1.5) tip="You're in irons: pointing into the wind with no power. Hold the rudder hard over (← or →) until the bow swings away from the wind, then pull the sail in (↑) to get going.";
   else if(twaD<42) tip="Too close to the wind. The sail can't make power here, so bear away (steer away from the wind) to about 45°.";
   else if(luff&&!S.auto) tip="The sail is flapping (luffing). Pull it in (↑) until it fills with a smooth curve.";
