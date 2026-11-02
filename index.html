@@ -152,6 +152,11 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 @keyframes pbPop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 .confetti{position:absolute;top:-10px;width:8px;height:12px;border-radius:2px;pointer-events:none;animation:confetti linear forwards}
 @keyframes confetti{to{transform:translate(var(--dx),560px) rotate(var(--r));opacity:.2}}
+#crsSeg{display:flex;flex-wrap:wrap;gap:8px}
+.crs{cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;padding:5px 5px 6px;border-radius:10px;border:1.5px solid var(--panel-line);background:var(--panel);color:var(--muted);font:inherit;font-weight:700;font-size:12px}
+.crs canvas{width:112px;height:84px;border-radius:6px;display:block}
+.crs[aria-pressed="true"]{border-color:var(--mark);color:var(--mark);box-shadow:0 0 0 2px rgba(255,212,71,.25)}
+.crs:hover{border-color:var(--muted)}
 .menuBest{grid-column:2;display:block;margin-top:4px;font-size:13px;font-weight:700;color:var(--mark)}
 @media (prefers-reduced-motion:reduce){.pb,.pbMain{animation:none}}
 .card h2{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:44px;line-height:1;margin:0 0 10px}
@@ -236,8 +241,6 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
     <section class="panel" id="instr">
       <div class="readout"><span class="lbl">Boat speed</span><span class="val" id="rSpeed">0.0<small>kn</small></span><span class="sub" id="rPct">&nbsp;</span></div>
       <div class="readout"><span class="lbl" id="r2Lbl">Towards mark</span><span class="val" id="r2">0.0<small>kn</small></span><span class="sub" id="r2Sub">&nbsp;</span></div>
-      <div class="bar"><span class="lbl">Heel</span><div class="track center heel"><div class="fill" id="bHeel"></div></div><span class="num" id="rHeel">0°</span></div>
-      <div class="bar"><span class="lbl">Rudder</span><div class="track center"><div class="fill" id="bRudder"></div></div><span class="num" id="rRudder">0°</span></div>
       <div class="keys"><kbd>←</kbd><kbd>→</kbd> steer · <kbd>↑</kbd><kbd>↓</kbd> sail in / out · <kbd>Q</kbd><kbd>E</kbd> or two-finger swipe across the boat: lean · <kbd>Space</kbd> right a capsize · <kbd>T</kbd> auto-trim <span id="autoTag"></span> · <kbd>N</kbd> sound · <kbd>P</kbd> pause</div>
     </section>
   </div>
@@ -262,7 +265,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
     </div>
     <div class="levels">
       <span class="eyebrow">Course</span>
-      <div class="seg" role="group" aria-label="Race course" id="crsSeg"></div>
+      <div role="group" aria-label="Race course" id="crsSeg"></div>
       <span id="crsDesc"></span>
       <span class="hint"><kbd>↑</kbd> <kbd>↓</kbd> to change</span>
     </div>
@@ -421,7 +424,7 @@ const LINE={x1:-260,x2:260,y:0};
 const ROUND_R=320, FINISH={x:0,y:0};
 const LINE_OBST=[{x:260,y:0,r:26,kind:"committee",seed:10},{x:-260,y:0,r:11,kind:"pin",seed:11}];
 const COURSES={
-  triangle:{name:"Triangle",desc:"The classic: beat up to the windward mark, reach across to the wing mark, reach back down to the leeward mark, then a short beat to the finish.",
+  triangle:{name:"Triangle",wind:0,desc:"The classic: beat up to the windward mark, reach across to the wing mark, reach back down to the leeward mark, then a short beat to the finish.",
     marks:[{x:0,y:-2000,name:"Windward mark"},{x:-1300,y:-1100,name:"Wing mark"},{x:0,y:520,name:"Leeward mark"}],
     obstacles:()=>[
       {x:380,y:-950,r:46,kind:"rock",seed:1},{x:318,y:-1012,r:30,kind:"rock",seed:2},{x:436,y:-1040,r:26,kind:"rock",seed:3},
@@ -435,14 +438,14 @@ const COURSES={
       {x:-1500,y:-1650,r:44,kind:"rock",seed:24},{x:120,y:-2350,r:30,kind:"rock",seed:25},
       {x:-720,y:-340,r:170,kind:"island",seed:6},
       {x:-950,y:-1760,r:24,kind:"moored",seed:7},{x:-1090,y:-620,r:24,kind:"moored",seed:8},{x:160,y:-1660,r:24,kind:"moored",seed:9}]},
-  sausage:{name:"Windward–leeward",desc:"Two laps straight up and down the wind: two beats and two runs. It's all about tacking on the shifts and gybing cleanly.",
+  sausage:{name:"Windward–leeward",wind:90,desc:"Wind from the east. Two laps straight up and down the wind: two beats and two runs. It's all about tacking on the shifts and gybing cleanly.",
     marks:[{x:0,y:-1300,name:"Windward mark"},{x:-60,y:480,name:"Leeward mark"},{x:0,y:-1300,name:"Windward mark, lap 2"},{x:-60,y:480,name:"Leeward mark, lap 2"}],
     obstacles:()=>[
       {x:-760,y:-700,r:44,kind:"rock",seed:31},{x:-812,y:-650,r:24,kind:"rock",seed:32},{x:720,y:-820,r:40,kind:"rock",seed:33},
       {x:640,y:-1400,r:34,kind:"rock",seed:34},{x:-620,y:-1350,r:30,kind:"rock",seed:35},{x:-680,y:-1395,r:18,kind:"rock",seed:36},
       {x:760,y:260,r:36,kind:"rock",seed:37},{x:-700,y:300,r:32,kind:"rock",seed:38},{x:140,y:-1800,r:38,kind:"rock",seed:39},
       {x:-900,y:-1900,r:24,kind:"moored",seed:40},{x:950,y:-300,r:24,kind:"moored",seed:41}]},
-  island:{name:"Round the island",desc:"A big island sits right in the middle of the upwind leg. Pick a side, mind the rocks off its shores, then reach round and run home.",
+  island:{name:"Round the island",wind:200,desc:"Wind from the south-south-west. A big island sits right in the middle of the upwind leg. Pick a side, mind the rocks off its shores, then reach round and run home.",
     marks:[{x:0,y:-2300,name:"Windward mark"},{x:-1300,y:-1300,name:"Wing mark"},{x:-150,y:620,name:"Leeward mark"}],
     obstacles:()=>[
       {x:-40,y:-1150,r:260,kind:"island",seed:44},
@@ -451,7 +454,7 @@ const COURSES={
       {x:880,y:-800,r:44,kind:"rock",seed:51},{x:-820,y:-420,r:36,kind:"rock",seed:52},{x:-1500,y:-1900,r:40,kind:"rock",seed:53},
       {x:500,y:450,r:30,kind:"rock",seed:54},{x:-600,y:250,r:28,kind:"rock",seed:55},
       {x:-1000,y:-1500,r:24,kind:"moored",seed:56},{x:700,y:-1200,r:24,kind:"moored",seed:57}]},
-  rocks:{name:"Rock garden",desc:"A short, tight course through a field of rocks. The legs are short but the gaps are narrow, so plan your way through.",
+  rocks:{name:"Rock garden",wind:290,desc:"Wind from the west-north-west. A short, tight course through a field of rocks. The legs are short but the gaps are narrow, so plan your way through.",
     marks:[{x:350,y:-1300,name:"Windward mark"},{x:-750,y:-650,name:"Wing mark"},{x:80,y:450,name:"Leeward mark"}],
     obstacles:()=>{
       const out=[],marks=COURSES.rocks.marks;
@@ -467,22 +470,32 @@ const COURSES={
     }}
 };
 const COURSE_KEYS=Object.keys(COURSES);
+// Each course is laid out as if the wind came from the north (the "wind frame"), then turned to the
+// course's own wind direction. CR holds that turn; fromWF/toWF convert between the frames.
+let CR={c:1,s:0,a:0};
+const fromWF=(x,y,R=CR)=>({x:x*R.c-y*R.s,y:x*R.s+y*R.c});
+const toWF=(x,y,R=CR)=>({x:x*R.c+y*R.s,y:-x*R.s+y*R.c});
+const courseRot=k=>{const a=(COURSES[k].wind||0)/D;return {c:Math.cos(a),s:Math.sin(a),a};};
+const lineEnds=(R=CR)=>[fromWF(LINE.x1,LINE.y,R),fromWF(LINE.x2,LINE.y,R)];
+// a course's marks (with rounding gates) and obstacles, in world coordinates
+function courseGeom(k){
+  const R=courseRot(k),marks=COURSES[k].marks.map(m=>({...m,...fromWF(m.x,m.y,R)}));
+  marks.forEach((m,i)=>{
+    const prev=i?marks[i-1]:FINISH, next=i<marks.length-1?marks[i+1]:FINISH;
+    const ix=prev.x-m.x,iy=prev.y-m.y,il=Math.hypot(ix,iy),ox=next.x-m.x,oy=next.y-m.y,ol=Math.hypot(ox,oy);
+    m.thIn=Math.atan2(iy,ix);m.thOut=Math.atan2(oy,ox);
+    m.gate=Math.atan2(-(iy/il+oy/ol),-(ix/il+ox/ol));
+  });
+  const obstacles=[...COURSES[k].obstacles(),...LINE_OBST].map(o=>({...o,...fromWF(o.x,o.y,R)}));
+  return {R,marks,obstacles};
+}
 let courseKey="triangle";try{const c=localStorage.getItem("closeHauledCourse");if(COURSES[c])courseKey=c;}catch(e){}
 let MARKS=[];
 // Set up a course: for each mark, the direction you arrive from, the direction you leave towards, and a
 // "gate" ray on the outside of the turn. You have rounded the mark when you cross the gate going anticlockwise.
-function setCourse(k){
-  courseKey=k;MARKS=COURSES[k].marks.map(m=>({...m}));
-  MARKS.forEach((m,i)=>{
-    const prev=i?MARKS[i-1]:FINISH, next=i<MARKS.length-1?MARKS[i+1]:FINISH;
-    const ix=prev.x-m.x,iy=prev.y-m.y,il=Math.hypot(ix,iy),ox=next.x-m.x,oy=next.y-m.y,ol=Math.hypot(ox,oy);
-    m.thIn=Math.atan2(iy,ix);m.thOut=Math.atan2(oy,ox);
-    const gx=-(ix/il+ox/ol),gy=-(iy/il+oy/ol);
-    m.gate=Math.atan2(gy,gx);
-  });
-}
+function setCourse(k){const g=courseGeom(k);courseKey=k;CR=g.R;MARKS=g.marks;}
 setCourse(courseKey);
-function raceObstacles(){return [...COURSES[courseKey].obstacles(),...LINE_OBST];}
+function raceObstacles(){return courseGeom(courseKey).obstacles;}
 function openObstacles(){
   const out=[];
   // rocky outcrops: clusters of 1-5 rocks scattered around, with clear water near the start
@@ -545,12 +558,12 @@ function startMode(mode){
     S.obstacles=openObstacles();
     S.open={dist:0,top:0,done:{},closeT:0};
   }else{
-    S.wind.base=0;S.wind.from=0;S.wind.speed=LV().start;
-    S.boat=newBoat(-140,260,Math.PI/2);
+    S.wind.base=CR.a;S.wind.from=CR.a;S.wind.speed=LV().start;
+    const sp=fromWF(-140,260);S.boat=newBoat(sp.x,sp.y,Math.PI/2+CR.a);
     S.boat.sheet=K.sheetMax;S.boat.boomDraw=1.2;   // races start with the sail let right out (no drive until you sheet in)
     S.boat.u=20;
     S.obstacles=raceObstacles();
-    S.race={stage:"pre",gun:COUNTDOWN,signals:[30,20,10,5,4,3,2,1,0],time:0,...newRacerState()};
+    S.race={stage:"pre",gun:COUNTDOWN,signals:[10,5,4,3,2,1,0],time:0,...newRacerState()};
     S.ais=AI_CREW.map(makeAI);
   }
   S.cam.x=S.boat.x;S.cam.y=S.boat.y;
@@ -638,6 +651,33 @@ function showMenuBest(){
   const pb=getBest(levelKey),el=$("menuBest");if(!el)return;
   el.innerHTML=pb?"★ Your best on "+COURSES[courseKey].name+" in "+LV().label.toLowerCase()+" wind: <b>"+fmt(pb)+"</b>":"";
 }
+// a little map of a course: shallows and rocks, the route round the marks, the start line and the wind
+function drawCourseThumb(cv,k){
+  const w=112,h=84,dpr=Math.min(2,window.devicePixelRatio||1);cv.width=w*dpr;cv.height=h*dpr;
+  const g=cv.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);
+  const geo=courseGeom(k),pts=[{x:0,y:0},...geo.marks,{x:0,y:0}];
+  let x0=-300,x1=300,y0=-300,y1=300;
+  for(const p of [...geo.marks,...geo.obstacles]){x0=Math.min(x0,p.x-(p.r||0));x1=Math.max(x1,p.x+(p.r||0));y0=Math.min(y0,p.y-(p.r||0));y1=Math.max(y1,p.y+(p.r||0));}
+  const pad=10,sc=Math.min((w-2*pad)/(x1-x0),(h-2*pad)/(y1-y0)),ox=w/2-(x0+x1)/2*sc,oy=h/2-(y0+y1)/2*sc,X=x=>ox+x*sc,Y=y=>oy+y*sc;
+  const bg=g.createLinearGradient(0,0,w,h);bg.addColorStop(0,"#17677c");bg.addColorStop(1,"#0b4557");g.fillStyle=bg;g.fillRect(0,0,w,h);
+  for(const o of geo.obstacles){
+    if(o.kind==="island"){g.fillStyle="rgba(118,214,196,.35)";g.beginPath();g.arc(X(o.x),Y(o.y),(o.r+70)*sc,0,TAU);g.fill();
+      g.fillStyle="#d9c58f";g.beginPath();g.arc(X(o.x),Y(o.y),o.r*sc,0,TAU);g.fill();g.fillStyle="#5d9a55";g.beginPath();g.arc(X(o.x),Y(o.y),o.r*sc*0.7,0,TAU);g.fill();}
+    else if(o.kind==="rock"){g.fillStyle="#9aa19a";g.beginPath();g.arc(X(o.x),Y(o.y),Math.max(1.2,o.r*sc),0,TAU);g.fill();}
+  }
+  // the route: start, round each mark, finish
+  g.strokeStyle="rgba(255,255,255,.55)";g.lineWidth=1.2;g.setLineDash([3,3]);g.beginPath();
+  pts.forEach((p,i)=>i?g.lineTo(X(p.x),Y(p.y)):g.moveTo(X(p.x),Y(p.y)));g.stroke();g.setLineDash([]);
+  const [e1,e2]=lineEnds(geo.R);g.strokeStyle="#ffd447";g.lineWidth=2;g.beginPath();g.moveTo(X(e1.x),Y(e1.y));g.lineTo(X(e2.x),Y(e2.y));g.stroke();
+  const seen=new Set();
+  geo.marks.forEach((m,i)=>{const key=m.x+","+m.y;if(seen.has(key))return;seen.add(key);
+    g.fillStyle="#ffd447";g.beginPath();g.arc(X(m.x),Y(m.y),3,0,TAU);g.fill();});
+  // wind arrow in the corner, blowing from the course's wind direction
+  const a=geo.R.a,cx=w-14,cy=14,ux=-Math.sin(a),uy=Math.cos(a);
+  g.fillStyle="rgba(5,27,36,.75)";g.beginPath();g.arc(cx,cy,10,0,TAU);g.fill();
+  g.strokeStyle="#e6f2ef";g.fillStyle="#e6f2ef";g.lineWidth=1.6;g.beginPath();g.moveTo(cx-ux*7,cy-uy*7);g.lineTo(cx+ux*4,cy+uy*4);g.stroke();
+  g.beginPath();g.moveTo(cx+ux*7,cy+uy*7);g.lineTo(cx+ux*2-uy*3.5,cy+uy*2+ux*3.5);g.lineTo(cx+ux*2+uy*3.5,cy+uy*2-ux*3.5);g.closePath();g.fill();
+}
 function pickCourse(k){
   setCourse(k);try{localStorage.setItem("closeHauledCourse",k);}catch(e){}
   document.querySelectorAll(".crs").forEach(b=>b.setAttribute("aria-pressed",b.dataset.c===k?"true":"false"));
@@ -646,7 +686,8 @@ function pickCourse(k){
 const bestKey=(lv,c=courseKey)=>"closeHauledBest_"+lv+(c==="triangle"?"":"_"+c);
 function getBest(k,c){try{const v=parseFloat(localStorage.getItem(bestKey(k,c)));return v>0?v:null;}catch(e){return null;}}
 document.querySelectorAll(".lvl").forEach(b=>b.onclick=()=>setLevel(b.dataset.l));
-$("crsSeg").innerHTML=COURSE_KEYS.map(k=>'<button class="lvl crs" data-c="'+k+'" aria-pressed="false">'+COURSES[k].name+"</button>").join("");
+$("crsSeg").innerHTML=COURSE_KEYS.map(k=>'<button class="crs" data-c="'+k+'" aria-pressed="false"><canvas width="112" height="84" data-c="'+k+'" aria-hidden="true"></canvas><span>'+COURSES[k].name+"</span></button>").join("");
+document.querySelectorAll(".crs canvas").forEach(c=>drawCourseThumb(c,c.dataset.c));
 document.querySelectorAll(".crs").forEach(b=>b.onclick=()=>pickCourse(b.dataset.c));
 setLevel(levelKey);pickCourse(courseKey);
 $("goOpen").onclick=()=>startMode("open");
@@ -979,11 +1020,12 @@ function drawFx(kind){
 // RACING
 // ════════════════════════════════════════════════════════════════════
 function crossedLine(px,py,x,y){
-  if(!(py>LINE.y&&y<=LINE.y))return false;
-  const ix=px+(x-px)*((py-LINE.y)/(py-y));
+  const a=toWF(px,py),b=toWF(x,y);                    // the line runs across the wind; "up" is upwind
+  if(!(a.y>LINE.y&&b.y<=LINE.y))return false;
+  const ix=a.x+(b.x-a.x)*((a.y-LINE.y)/(a.y-b.y));
   return ix>LINE.x1&&ix<LINE.x2;
 }
-const COUNTDOWN=40;                                   // seconds from the warning to the start gun
+const COUNTDOWN=20;                                   // seconds from the warning to the start gun
 function newRacerState(){return {next:0,lastA:null,lastP:null,warned:false,started:false,ocs:false,finished:false,finishT:0,pen:0,startLate:0};}
 // race clock: countdown signals, then the gun
 function stepRaceClock(){
@@ -995,7 +1037,7 @@ function stepRaceClock(){
     if(sgl===0)sfx.horn(1.4);else if(sgl>=10)sfx.horn(0.4);else sfx.beep();
     if(sgl===0){
       r.stage="racing";toast("GO!","mark");
-      if(S.boat.y<LINE.y&&!r.started)toast("You're on the wrong side of the line: go back and cross it","bad");
+      if(toWF(S.boat.x,S.boat.y).y<LINE.y&&!r.started)toast("You're on the wrong side of the line: go back and cross it","bad");
     }else if(sgl>=10)toast(sgl+" seconds to the start","");
     else toast(String(sgl),"mark");
   }
@@ -1007,13 +1049,13 @@ function trackRacer(rs,b,px,py,me){
   const pre=S.race.stage==="pre";
   if(!rs.started){
     if(crossedLine(px,py,b.x,b.y)){
-      if(pre){rs.ocs=true;say("Over early! Go back below the line","bad");}
+      if(pre){rs.ocs=true;say("Over early! Go back behind the line","bad");}
       else if(!rs.ocs){
         rs.started=true;rs.startLate=S.t-S.race.gun;
         say(rs.startLate<2?"Great start!":"Started "+rs.startLate.toFixed(1)+" s after the gun",rs.startLate<2?"good":"");
       }
     }
-    if(rs.ocs&&b.y>LINE.y+4){rs.ocs=false;say(pre?"Back behind the line. Wait for the gun":"Clear. Now cross the line to start","mark");}
+    if(rs.ocs&&toWF(b.x,b.y).y>LINE.y+4){rs.ocs=false;say(pre?"Back behind the line. Wait for the gun":"Clear. Now cross the line to start","mark");}
     return;
   }
   // Going back round the last mark the wrong way undoes the rounding (like unwinding a string).
@@ -1115,12 +1157,12 @@ function celebrate(){
 // COMPUTER BOATS AND RIGHT OF WAY
 // ════════════════════════════════════════════════════════════════════
 const AI_CREW=[
-  {name:"Blue Bosun",  look:{stripe:"#3f8ef0",sail:"rgba(208,228,255,0.93)",shirt:"#2a64c8",top:"#e9eef2",skin:"#b97a52",hat:"#1d2a3a",legs:"#1f2a36"},skill:0.88,lineX:-170,x:-40, y:340,h:Math.PI/2},
-  {name:"Green Galleon", look:{stripe:"#3cc483",sail:"rgba(214,246,228,0.93)",shirt:"#1f9a60",top:"#2b2f33",skin:"#7d4f33",hat:"#f2c94b",legs:"#2b2f33"},skill:0.955,lineX:20, y:300,x:110, h:-Math.PI/2},
-  {name:"Purple Puffin",look:{stripe:"#b07cf2",sail:"rgba(236,224,255,0.93)",shirt:"#7a4cc4",top:"#f2f2f2",skin:"#f0c8a4",hat:null,hair:"#b8652a",legs:"#3a2f4a"},skill:0.975,lineX:170,x:240,y:380,h:-Math.PI/2}
+  {name:"Blue Bosun",  look:{stripe:"#3f8ef0",sail:"rgba(208,228,255,0.93)",shirt:"#2a64c8",top:"#e9eef2",skin:"#b97a52",hat:"#1d2a3a",legs:"#1f2a36"},skill:0.88,lineX:-170,x:-60, y:210,h:Math.PI/2},
+  {name:"Green Galleon", look:{stripe:"#3cc483",sail:"rgba(214,246,228,0.93)",shirt:"#1f9a60",top:"#2b2f33",skin:"#7d4f33",hat:"#f2c94b",legs:"#2b2f33"},skill:0.955,lineX:20, y:190,x:120, h:-Math.PI/2},
+  {name:"Purple Puffin",look:{stripe:"#b07cf2",sail:"rgba(236,224,255,0.93)",shirt:"#7a4cc4",top:"#f2f2f2",skin:"#f0c8a4",hat:null,hair:"#b8652a",legs:"#3a2f4a"},skill:0.975,lineX:170,x:260,y:230,h:-Math.PI/2}
 ];
 function makeAI(c){
-  const b=newBoat(c.x,c.y,c.h);b.u=18;b.look=c.look;
+  const p=fromWF(c.x,c.y),b=newBoat(p.x,p.y,c.h+CR.a);b.u=45;b.look=c.look;     // already sailing slowly on a reach, as boats are near the start
   const rs=newRacerState();rs.name=c.name;
   return {name:c.name,look:c.look,skill:c.skill,lineX:c.lineX,b,rs,tack:1,tackT:0,wp:0,lastNext:0,stuckT:0,unstickT:0,loiter:1,avoid:null,F:null};
 }
@@ -1148,28 +1190,31 @@ function stepAI(ai,dt){
   let tgt,slow=false;
   if(rs.finished){tgt={x:b.x+(b.x>=0?400:-400),y:b.y+60};slow=true;}
   else if(!rs.started){
-    // north of the line without a proper start (over early, or went round an end): come back below it
-    if(rs.ocs||b.y<LINE.y-2||(Math.abs(b.x)>LINE.x2+20&&b.y<60))tgt={x:clamp(b.x,-200,200),y:150};
+    // (all worked out in the wind frame, where the line runs across and upwind is up)
+    const q=toWF(b.x,b.y);let t;
+    // upwind of the line without a proper start (over early, or went round an end): come back below it
+    if(rs.ocs||q.y<LINE.y-2||(Math.abs(q.x)>LINE.x2+20&&q.y<60))t={x:clamp(q.x,-200,200),y:150};
     else if(tl>0){
-      const d=Math.hypot(b.x-ai.lineX,b.y),need=d/30+8;
+      const d=Math.hypot(q.x-ai.lineX,q.y),need=d/(0.33*S.wind.speed)+6;   // time to reach the line, which depends on the breeze
       if(tl>need){
         // wait below the line on a slow reach, turning round by gybing (stern through the wind) so we never stall
-        const hold={x:ai.lineX,y:230};
-        if(Math.hypot(b.x-hold.x,b.y-hold.y)>140)tgt=hold;
+        const hold={x:ai.lineX,y:170};
+        if(Math.hypot(q.x-hold.x,q.y-hold.y)>140)t=hold;
         else{
-          if((b.x-hold.x)*ai.loiter>80&&ai.gybeT<=0){ai.loiter=-ai.loiter;ai.gybeT=4;}
-          tgt={x:b.x+ai.loiter*300,y:hold.y};slow=true;
+          if((q.x-hold.x)*ai.loiter>80&&ai.gybeT<=0){ai.loiter=-ai.loiter;ai.gybeT=4;}
+          t={x:q.x+ai.loiter*300,y:hold.y};slow=true;
         }
-      }else if(b.y<70&&tl>1.5){tgt={x:b.x+ai.loiter*300,y:b.y+20};slow=true;}   // early: run along the line
-      else tgt={x:ai.lineX,y:-250};
-    }else tgt={x:ai.lineX,y:-250};
+      }else if(q.y<70&&tl>1.5){t={x:q.x+ai.loiter*300,y:q.y+20};slow=true;}   // early: run along the line
+      else t={x:ai.lineX,y:-250};
+    }else t={x:ai.lineX,y:-250};
+    tgt=fromWF(t.x,t.y);
   }else if(rs.next<MARKS.length){
     const m=MARKS[rs.next],aIn=m.gate+0.95,aOut=m.gate-0.95;
     const wA={x:m.x+Math.cos(aIn)*58,y:m.y+Math.sin(aIn)*58},wB={x:m.x+Math.cos(aOut)*58,y:m.y+Math.sin(aOut)*58};
     if(ai.wp===0&&Math.hypot(b.x-wA.x,b.y-wA.y)<45)ai.wp=1;
     tgt=ai.wp?wB:wA;
-  }else if(b.y<LINE.y-2)tgt={x:clamp(b.x,-180,180),y:150};    // missed the line: come back below it
-  else tgt={x:clamp(ai.lineX*0.6,-150,150),y:-250};
+  }else{const q=toWF(b.x,b.y);
+    tgt=q.y<LINE.y-2?fromWF(clamp(q.x,-180,180),150):fromWF(clamp(ai.lineX*0.6,-150,150),-250);}    // (missed the line: come back below it)
   // route round rocks, the island, moored boats, marks that are not ours, and boats that have stopped
   const obs=S.obstacles.filter(o=>Math.hypot(o.x-b.x,o.y-b.y)<900);
   for(const m of MARKS)if(Math.hypot(m.x-b.x,m.y-b.y)<600)obs.push({x:m.x,y:m.y,r:14,kind:"mark"});
@@ -1931,8 +1976,8 @@ function drawScene(){
 // ════════════════════════════════════════════════════════════════════
 function drawCourse(){
   const r=S.race;
-  // start / finish line
-  ctx.save();
+  // start / finish line, drawn in the course's wind frame (it always runs across the wind)
+  ctx.save();ctx.rotate(CR.a);
   const active=!r.started||r.next>=MARKS.length;
   if(active){ctx.strokeStyle="rgba(255,212,71,"+(0.12+0.05*Math.sin(S.t*3)).toFixed(3)+")";ctx.lineWidth=12;ctx.lineCap="round";
     ctx.beginPath();ctx.moveTo(LINE.x1,LINE.y);ctx.lineTo(LINE.x2,LINE.y);ctx.stroke();}
@@ -1942,8 +1987,12 @@ function drawCourse(){
   ctx.strokeStyle=active?"rgba(255,212,71,0.9)":"rgba(230,245,242,0.35)";ctx.lineWidth=2.5;ctx.setLineDash([14,10]);
   ctx.beginPath();ctx.moveTo(LINE.x1,LINE.y);ctx.lineTo(LINE.x2,LINE.y);ctx.stroke();ctx.restore();
   if(active){
-    ctx.fillStyle="rgba(255,212,71,0.9)";ctx.font="700 15px 'Atkinson Hyperlegible',sans-serif";ctx.textAlign="center";ctx.textBaseline="bottom";
-    ctx.fillText(!r.started?(r.stage==="pre"?"START  ▲  cross going upwind after the gun":"START  ▲  cross going upwind"):"FINISH  ▲  cross going upwind",0,LINE.y-10);
+    // the label sits on the upwind side, along the line, turned so it never reads upside down; the arrow points upwind
+    const flip=Math.cos(CR.a)<0,ar=flip?"▼":"▲",p=fromWF(0,LINE.y-18);
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(CR.a+(flip?Math.PI:0));
+    ctx.fillStyle="rgba(255,212,71,0.9)";ctx.font="700 15px 'Atkinson Hyperlegible',sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText(!r.started?(r.stage==="pre"?"START  "+ar+"  cross going upwind after the gun":"START  "+ar+"  cross going upwind"):"FINISH  "+ar+"  cross going upwind",0,0);
+    ctx.restore();
   }
   MARKS.forEach((m,i)=>{
     const isNext=r.stage!=="done"&&i===r.next&&r.started;
@@ -2059,14 +2108,31 @@ function sprayFrom(b,F,dt){
     S.fx.push({k:"drop",x:p.x,y:p.y,z:p.z,vx:fx*b.u*0.5+rx*sd*v*0.6+wx*30+(Math.random()-0.5)*20,vy:fy*b.u*0.5+ry*sd*v*0.6+wy*30+(Math.random()-0.5)*20,vz:45+Math.random()*45,life:1.2,spray:1});
   }
 }
-// While swiping: a faint double arrow across the boat shows the axis the swipe works along
-function drawSwipeAxis(){
-  const b=S.boat,age=S.t-(S.swipeT??-9);if(age<0||age>0.9||b.capsized)return;
-  const a=1-age/0.9,rx=Math.cos(b.h),ry=Math.sin(b.h),L=46,c=toView({x:b.x,y:b.y,z:6});
-  ctx.save();ctx.globalAlpha=0.75*a;ctx.strokeStyle="#ffd447";ctx.fillStyle="#ffd447";ctx.lineWidth=2;ctx.lineCap="round";
-  ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(c[0]-rx*L,c[1]-ry*L);ctx.lineTo(c[0]+rx*L,c[1]+ry*L);ctx.stroke();ctx.setLineDash([]);
-  for(const sg of [1,-1]){const hx=c[0]+rx*L*sg,hy=c[1]+ry*L*sg,big=sg===S.swipeDir?1.4:1;
-    ctx.beginPath();ctx.moveTo(hx+rx*sg*8*big,hy+ry*sg*8*big);ctx.lineTo(hx-ry*5*big,hy+rx*5*big);ctx.lineTo(hx+ry*5*big,hy-rx*5*big);ctx.closePath();ctx.fill();}
+// Balance guide: when the sailor is in the wrong place for how hard the sail is pulling, a yellow arrow
+// across the boat points the way to move (the way to swipe, or Q / E). It grows with more chevrons the
+// further off they are, turns red near capsizing, and fades away once the boat is balanced.
+function balanceNeed(b,F){
+  if(!F||b.capsized)return 0;
+  const want=clamp(-K.heelWind*F.side/K.crew-b.heel*1.6,-1,1);     // where the crew would balance her
+  return want-b.crew;                                                // + = move to starboard
+}
+function drawBalanceGuide(){
+  const b=S.boat;if(b.capsized){S.balA=0;return;}
+  const need=balanceNeed(b,S.F),mag=Math.abs(need),hd=Math.abs(b.heel)*D;
+  const show=mag>0.12||(mag>0.05&&hd>12);
+  S.balA=approach(S.balA||0,show?1:0,(show?3:1.5)/60);             // fade in quickly, out gently
+  if(S.balA<0.02)return;
+  if(show)S.balSide=Math.sign(need)||S.balSide||1;
+  const sg=S.balSide,rx=Math.cos(b.h)*sg,ry=Math.sin(b.h)*sg,c=toView({x:b.x,y:b.y,z:6});
+  const danger=hd>24,col=danger?"#ff6266":"#ffd447",n=mag>0.55?3:mag>0.3?2:1;
+  const pulse=0.75+0.25*Math.sin(S.t*6);
+  ctx.save();ctx.globalAlpha=S.balA*(danger?pulse:0.9);ctx.fillStyle=col;ctx.strokeStyle="rgba(5,27,36,0.7)";ctx.lineWidth=2;ctx.lineJoin="round";
+  // chevrons marching out from the boat towards the side to move to
+  for(let k=0;k<n;k++){
+    const d=26+k*11+((S.t*18)%11)*0.35,hx=c[0]+rx*d,hy=c[1]+ry*d,s=6.5+k*0.8;
+    ctx.beginPath();ctx.moveTo(hx+rx*s,hy+ry*s);ctx.lineTo(hx-ry*s-rx*s*0.4,hy+rx*s-ry*s*0.4);ctx.lineTo(hx-rx*s*0.1,hy-ry*s*0.1);
+    ctx.lineTo(hx+ry*s-rx*s*0.4,hy-rx*s-ry*s*0.4);ctx.closePath();ctx.stroke();ctx.fill();
+  }
   ctx.restore();
 }
 // Dotted line ahead of the boat: where it will be in the next 3 seconds (shows drift sideways too)
@@ -2678,7 +2744,7 @@ function drawMinimap(){
   if(mm.width!==w*dpr){mm.width=w*dpr;mm.height=h*dpr;}
   mctx.setTransform(dpr,0,0,dpr,0,0);mctx.clearRect(0,0,w,h);
   if(!mmBox||mmBox.c!==courseKey){                                   // frame the whole course
-    let x0=LINE.x1,x1=LINE.x2,y0=-100,y1=200;
+    let x0=-300,x1=300,y0=-300,y1=300;
     for(const p of [...MARKS,...S.obstacles]){const rr=(p.r||0)+60;x0=Math.min(x0,p.x-rr);x1=Math.max(x1,p.x+rr);y0=Math.min(y0,p.y-rr);y1=Math.max(y1,p.y+rr);}
     mmBox={c:courseKey,x0:x0-120,y0:y0-120,w:x1-x0+240,h:y1-y0+240};
   }
@@ -2692,7 +2758,7 @@ function drawMinimap(){
     mctx.fillStyle=o.kind==="island"?"#d9c58f":o.kind==="rock"?"#9aa19a":o.kind==="committee"?"#f1efe6":o.kind==="pin"?"#ff7b30":"#9fb2bb";
     mctx.beginPath();mctx.arc(X(o.x),Y(o.y),Math.max(1.6,o.r*k),0,TAU);mctx.fill();
   }
-  mctx.strokeStyle="rgba(255,212,71,0.8)";mctx.setLineDash([3,2]);mctx.beginPath();mctx.moveTo(X(LINE.x1),Y(0));mctx.lineTo(X(LINE.x2),Y(0));mctx.stroke();mctx.setLineDash([]);
+  mctx.strokeStyle="rgba(255,212,71,0.8)";mctx.setLineDash([3,2]);{const [e1,e2]=lineEnds();mctx.beginPath();mctx.moveTo(X(e1.x),Y(e1.y));mctx.lineTo(X(e2.x),Y(e2.y));mctx.stroke();}mctx.setLineDash([]);
   const r=S.race;
   markBuoys().forEach(({m,i,done})=>{
     mctx.fillStyle=done?"#8c9b9c":"#ffd447";mctx.beginPath();mctx.arc(X(m.x),Y(m.y),i===r.next&&r.started?5:3.5,0,TAU);mctx.fill();
@@ -2804,14 +2870,7 @@ function updateHUD(){
   if(absAw<0.62||b.capsized)zs.style.height="0";
   else{const lo=Math.max(0,optB-0.14),hi=Math.min(sMax,optB+0.14,absAw);zs.style.top=(lo/sMax*100).toFixed(1)+"%";zs.style.height=(Math.max(0,hi-lo)/sMax*100).toFixed(1)+"%";}
   $("rSheet").textContent=Math.round(F.boom*D)+"°";
-  const rp=b.rudder*50;
-  $("bRudder").style.left=(rp<0?50+rp:50)+"%";$("bRudder").style.width=Math.abs(rp)+"%";
-  $("rRudder").textContent=Math.round(b.rudder*35)+"°";
   $("autoTag").textContent=S.auto?"ON":"";
-  const hd=b.heel*D,ha=Math.min(1,Math.abs(hd)/40);
-  const bh=$("bHeel");bh.style.left=(hd<0?50-ha*50:50)+"%";bh.style.width=(ha*50)+"%";
-  bh.style.background=b.capsized?"var(--bad)":Math.abs(hd)>24?"var(--bad)":Math.abs(hd)>12?"var(--warn)":"var(--good)";
-  $("rHeel").textContent=b.capsized?"over":Math.round(Math.abs(hd))+"°"+(Math.abs(hd)>=1?(hd>0?" S":" P"):"");
   $("touchUp").hidden=!b.capsized;
   // lift / header
   const shD=S.shift*D,sl=$("shiftLabel");
@@ -2840,8 +2899,8 @@ function updateHUD(){
   else if(Math.abs(heelD)>24) tip="Heeling hard to "+lowSide+"! Lean to the other side ("+leanKey+") or let the sail out (↓) to spill wind, or you'll go over.";
   else if(F.kelp>0.15) tip="You're dragging through seaweed. It wraps round the centreboard and rudder and slows you right down. Steer out of it.";
   else if(S.rowTip) tip=S.rowTip;
-  else if(S.mode==="race"&&S.race.ocs) tip="You crossed the line before the gun. Sail back below it (south of the dashed line), then cross again once the race has started.";
-  else if(S.mode==="race"&&S.race.stage==="pre") tip="Stay below the dashed line. Time your run so you are moving fast and cross it just after the countdown hits zero. Crossing early means going back.";
+  else if(S.mode==="race"&&S.race.ocs) tip="You crossed the line before the gun. Sail back to the downwind side of the dashed line, then cross again once the race has started.";
+  else if(S.mode==="race"&&S.race.stage==="pre") tip="Stay behind (downwind of) the dashed line. Time your run so you are moving fast and cross it just after the countdown hits zero. Crossing early means going back.";
   else if(S.mode==="race"&&!S.race.started) tip="The race has started! Cross the start line going upwind.";
   else if(twaD<42&&Math.abs(kn)<1.5) tip="You're in irons: pointing into the wind with no power. Hold the rudder hard over (← or →) until the bow swings away from the wind, then pull the sail in (↑) to get going.";
   else if(twaD<42) tip="Too close to the wind. The sail can't make power here, so bear away (steer away from the wind) to about 45°.";
@@ -2868,7 +2927,7 @@ function updateHUD(){
     const rem=r.gun-S.t;
     $("statusMain").textContent=r.stage==="pre"?"−"+fmt(Math.max(0,rem)).replace(/\.\d$/,""):fmt(r.time)+(r.pen?"  +"+r.pen+"s":"");
     const place=r.started?" · <b>"+ord(playerPosition())+"</b> of "+(S.ais.length+1):"";
-    $("statusSub").innerHTML=r.ocs?"<b>Over early</b>: go back below the line":r.stage==="pre"?"Countdown to the start gun"+(getBest(levelKey)?' · <span style="color:var(--mark)">★ best '+fmt(getBest(levelKey))+"</span>":""):!r.started?"<b>Cross the start line!</b>":
+    $("statusSub").innerHTML=r.ocs?"<b>Over early</b>: go back behind the line":r.stage==="pre"?"Countdown to the start gun"+(getBest(levelKey)?' · <span style="color:var(--mark)">★ best '+fmt(getBest(levelKey))+"</span>":""):!r.started?"<b>Cross the start line!</b>":
       (r.next<MARKS.length?"Next: <b>"+MARKS[r.next].name+"</b> ("+(r.next+1)+" of "+MARKS.length+"), keep it on your left":"Next: <b>Finish line</b>, cross it going upwind")+place;
   }else{
     const o=S.open;
@@ -2926,8 +2985,8 @@ function frame(now){
     if(FX.wakes)drawWakes();
     drawFx("ring");
     if(!S.boat.capsized)drawMotion();
-    drawSwipeAxis();
     if(FX.scene)drawScene();
+    drawBalanceGuide();
     drawFx("drop");
     drawEdgeArrow();
     drawCountdown();
