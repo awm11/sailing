@@ -66,12 +66,12 @@ button{font:inherit;color:inherit}
 #posLabel{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:.02em;text-transform:uppercase;line-height:1}
 #tackLabel{color:var(--muted);font-size:12px}
 
-#tipPanel{flex:1;max-width:460px;align-self:flex-end;display:flex;gap:10px;align-items:flex-start}
+#tipPanel{flex:1;max-width:340px;margin-right:auto;align-self:flex-end;display:flex;gap:10px;align-items:flex-start}
 #tip{margin:0;font-size:14px;min-width:0}
 .chip{flex:none;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1.5px solid currentColor;margin-top:1px}
 .chip.good{color:var(--good)} .chip.warn{color:var(--warn)} .chip.bad{color:var(--bad)} .chip.idle{color:var(--muted)}
 
-#instr{display:grid;grid-template-columns:repeat(3,auto);gap:8px 18px;min-width:280px}
+#instr{display:grid;grid-template-columns:auto auto 1fr;gap:8px 18px;min-width:280px;width:400px;box-sizing:border-box}
 .readout{display:flex;flex-direction:column}
 .readout .val{font-family:var(--mono);font-weight:700;font-size:24px;line-height:1.1;font-variant-numeric:tabular-nums}
 .readout .val small{font-size:12px;color:var(--muted);font-weight:500;margin-left:3px}
@@ -82,7 +82,26 @@ button{font:inherit;color:inherit}
 .track.center::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--muted)}
 .track.center .fill{background:var(--signal)}
 .track.heel{background:linear-gradient(90deg,rgba(255,98,102,.35) 0 19%,rgba(160,214,214,.14) 19% 81%,rgba(255,98,102,.35) 81%)}
-.track.crew .fill{background:#e8463c}
+/* sail: an upright gauge, because ↑ pulls it in and ↓ lets it out. The green zone is the right setting for
+   the current wind angle; keep the white tick inside it. */
+/* the sail gauge has its own tall pane on the right, between the top and bottom panels */
+.row.mid{flex:1;min-height:0}
+/* placed by layoutSailPanel(): in the gap on the right between the course/drills panel and the instruments */
+#sailPanel{position:fixed;box-sizing:border-box;right:max(16px,env(safe-area-inset-right,0px));top:40%;height:200px;width:150px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;padding:10px 12px}
+#sailPanel .eyebrow{align-self:stretch;text-align:right}
+#sailPanel .end{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap}
+#sailPanel .num{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;letter-spacing:0;color:var(--ink);margin-left:4px}
+.vrow{position:relative;flex:1;min-height:36px;width:100%;margin:4px 0}
+.vtrack{position:absolute;right:6px;top:0;bottom:0;width:18px;border-radius:9px;background:rgba(160,214,214,.14)}
+/* the trim state rides beside the marker, big and coloured, so it can be read out of the corner of the eye */
+.vstate{position:absolute;right:38px;transform:translateY(-50%);font-weight:700;font-size:13px;line-height:1.1;white-space:nowrap;
+  padding:3px 7px;border-radius:6px;border:1.5px solid currentColor;background:rgba(5,27,36,.85);transition:top .12s}
+.vstate.good{color:var(--good)}.vstate.warn{color:var(--warn)}.vstate.bad{color:var(--bad)}
+.vtrack .tick.good{background:var(--good)}.vtrack .tick.warn{background:var(--warn)}.vtrack .tick.bad{background:var(--bad)}
+.vtrack .fill{position:absolute;left:0;right:0;top:0;background:rgba(230,242,239,.25);border-radius:9px}
+.vtrack .zone{position:absolute;left:0;right:0;background:rgba(113,227,166,.45);box-shadow:inset 0 1px var(--good),inset 0 -1px var(--good);border-radius:3px;transition:top .25s,height .25s}
+.vtrack .tick{position:absolute;left:-6px;right:-6px;height:6px;margin-top:-3px;background:var(--ink);border-radius:2px;box-shadow:0 0 0 1px rgba(5,27,36,.6)}
+.readout .sub{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap}
 .bar .num{white-space:nowrap}
 #shiftLabel{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 .bar .num{font-family:var(--mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
@@ -121,6 +140,20 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 .primer p{margin:0;color:var(--ink);opacity:.88;font-size:14px}
 .keymap{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center;font-size:14px}
 .card{background:var(--panel);border:1px solid var(--panel-line);border-radius:14px;padding:22px 24px;max-width:520px;margin:auto}
+#fCard{position:relative;overflow:hidden}
+/* personal best banner */
+.pb{margin:-22px -24px 16px;padding:14px 24px 12px;text-align:center;color:#1d1503;
+  background:linear-gradient(100deg,#f5b52e,#ffe27a 35%,#fff3b8 50%,#ffe27a 65%,#f5b52e);background-size:220% 100%;animation:pbShine 2.4s linear infinite}
+.pbMain{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:34px;line-height:1;letter-spacing:.02em;animation:pbPop .6s cubic-bezier(.2,1.6,.4,1) both}
+.pbSub{font-weight:700;font-size:14px;margin-top:4px}
+.pbTag{color:var(--mark)}
+.results .behind{color:var(--muted);font-weight:400}
+@keyframes pbShine{from{background-position:120% 0}to{background-position:-100% 0}}
+@keyframes pbPop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+.confetti{position:absolute;top:-10px;width:8px;height:12px;border-radius:2px;pointer-events:none;animation:confetti linear forwards}
+@keyframes confetti{to{transform:translate(var(--dx),560px) rotate(var(--r));opacity:.2}}
+.menuBest{grid-column:2;display:block;margin-top:4px;font-size:13px;font-weight:700;color:var(--mark)}
+@media (prefers-reduced-motion:reduce){.pb,.pbMain{animation:none}}
 .card h2{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:44px;line-height:1;margin:0 0 10px}
 .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 .btn{cursor:pointer;padding:9px 16px;border-radius:8px;border:1.5px solid var(--panel-line);background:rgba(255,255,255,.06);font-weight:700}
@@ -149,11 +182,13 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
   .keys{display:none}
 }
 #tipPanel{min-width:210px}
+#trimChip{display:none}   /* the trim verdict now sits beside the sail gauge */
 @media (max-width:1180px){.keys{display:none}}
 @media (max-width:760px){
   #dialPanel,#side{display:none}
   #tipPanel{display:none}
-  #instr{min-width:0;grid-template-columns:repeat(3,1fr);gap:6px 12px;flex:1}
+  #instr{min-width:0;width:auto;grid-template-columns:repeat(2,1fr);gap:6px 12px;flex:1}
+  #sailPanel{width:128px;max-height:300px}
   .readout .val{font-size:19px}
   .bar{grid-template-columns:64px 1fr 52px}
   #status{min-width:0}
@@ -182,6 +217,14 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
       <ul id="drills"></ul>
     </section>
   </div>
+  <div class="row mid">
+    <section class="panel" id="sailPanel" aria-label="Sail trim">
+      <div class="eyebrow">Sail <span class="num" id="rSheet">45°</span></div><span class="end">in ↑</span>
+      <div class="vrow"><div class="vtrack"><div class="zone" id="zSheet"></div><div class="fill" id="bSheet"></div><div class="tick" id="tSheet"></div></div>
+        <div class="vstate good" id="sState">Good</div></div>
+      <span class="end">out ↓</span>
+    </section>
+  </div>
   <div class="row">
     <section class="panel" id="dialPanel">
       <canvas id="dial" width="168" height="168" aria-label="Points of sail dial"></canvas>
@@ -191,13 +234,10 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
     </section>
     <section class="panel" id="tipPanel"><span class="chip idle" id="trimChip">Trim</span><p id="tip"></p></section>
     <section class="panel" id="instr">
-      <div class="readout"><span class="lbl">Boat speed</span><span class="val" id="rSpeed">0.0<small>kn</small></span></div>
-      <div class="readout"><span class="lbl">Heading</span><span class="val" id="rHead">000°</span></div>
-      <div class="readout"><span class="lbl">Wind from</span><span class="val" id="rWind">000°</span></div>
-      <div class="bar"><span class="lbl">Sail angle</span><div class="track"><div class="fill" id="bSheet"></div></div><span class="num" id="rSheet">45°</span></div>
-      <div class="bar"><span class="lbl">Rudder</span><div class="track center"><div class="fill" id="bRudder"></div></div><span class="num" id="rRudder">0°</span></div>
+      <div class="readout"><span class="lbl">Boat speed</span><span class="val" id="rSpeed">0.0<small>kn</small></span><span class="sub" id="rPct">&nbsp;</span></div>
+      <div class="readout"><span class="lbl" id="r2Lbl">Towards mark</span><span class="val" id="r2">0.0<small>kn</small></span><span class="sub" id="r2Sub">&nbsp;</span></div>
       <div class="bar"><span class="lbl">Heel</span><div class="track center heel"><div class="fill" id="bHeel"></div></div><span class="num" id="rHeel">0°</span></div>
-      <div class="bar"><span class="lbl">Crew</span><div class="track center crew"><div class="fill" id="bCrew"></div></div><span class="num" id="rCrew">mid</span></div>
+      <div class="bar"><span class="lbl">Rudder</span><div class="track center"><div class="fill" id="bRudder"></div></div><span class="num" id="rRudder">0°</span></div>
       <div class="keys"><kbd>←</kbd><kbd>→</kbd> steer · <kbd>↑</kbd><kbd>↓</kbd> sail in / out · <kbd>Q</kbd><kbd>E</kbd> or two-finger swipe across the boat: lean · <kbd>Space</kbd> right a capsize · <kbd>T</kbd> auto-trim <span id="autoTag"></span> · <kbd>N</kbd> sound · <kbd>P</kbd> pause</div>
     </section>
   </div>
@@ -210,7 +250,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
     <p class="lede">A top-down sailing dinghy driven by real sailing physics. Steer with the rudder, set the angle of the sail, and read the wind from the water around you.</p>
     <div class="modes">
       <button class="mode" id="goOpen"><span class="k">1</span><h2>Open water</h2><p>Free sailing in wind that shifts and changes strength, plus seven drills that teach you the points of sail.</p></button>
-      <button class="mode" id="goRace"><span class="k">2</span><h2>Race course</h2><p>Race three other boats. Time your start to the countdown, round three marks, give way when the rules say so, and finish first.</p></button>
+      <button class="mode" id="goRace"><span class="k">2</span><h2>Race course</h2><p>Race three other boats. Time your start to the countdown, round three marks, give way when the rules say so, and finish first.</p><span class="menuBest" id="menuBest"></span></button>
     </div>
     <div class="levels">
       <span class="eyebrow">Wind</span>
@@ -263,7 +303,8 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 </div>
 
 <div id="finish" class="overlay" hidden>
-  <div class="card">
+  <div class="card" id="fCard">
+    <div class="pb" id="fPB" hidden><div class="pbMain">★ New personal best ★</div><div class="pbSub" id="fPBsub"></div></div>
     <h2 id="fTitle">Finished</h2>
     <ol class="table" id="fTable"></ol>
     <div class="results">
@@ -443,6 +484,7 @@ const DRILLS=[
 ];
 
 function startMode(mode){
+  setTimeout(warmPolar,0);
   S.mode=mode;S.paused=false;S.t=0;S.trail=[];S.hitCd=0;S.auto=false;S.fx=[];S.ais=[];S.rowTip=null;
   K.capsize=LV().capsize;
   if(mode==="open"){
@@ -539,7 +581,9 @@ function setLevel(k){
   levelKey=k;try{localStorage.setItem("closeHauledLevel",k);}catch(e){}
   document.querySelectorAll(".lvl").forEach(b=>b.setAttribute("aria-pressed",b.dataset.l===k?"true":"false"));
   $("lvlDesc").textContent=LEVELS[k].desc;
+  const pb=getBest(k);$("menuBest").innerHTML=pb?"★ Your best in "+LEVELS[k].label.toLowerCase()+" wind: <b>"+fmt(pb)+"</b>":"";
 }
+function getBest(k){try{const v=parseFloat(localStorage.getItem("closeHauledBest_"+k));return v>0?v:null;}catch(e){return null;}}
 document.querySelectorAll(".lvl").forEach(b=>b.onclick=()=>setLevel(b.dataset.l));
 setLevel(levelKey);
 $("goOpen").onclick=()=>startMode("open");
@@ -973,9 +1017,8 @@ function finishRace(){
   const rows=[{name:"You",rs:r,me:true},...S.ais.map(a=>({name:a.name,rs:a.rs,look:a.look}))];
   rows.sort((x,y)=>(x.rs.finished?x.rs.finishT:1e9)-(y.rs.finished?y.rs.finishT:1e9));
   const pos=rows.findIndex(x=>x.me)+1;
-  let best=null;const key="closeHauledBest_"+levelKey;
-  try{best=parseFloat(localStorage.getItem(key));}catch(e){}
-  const isBest=!(best>0)||r.finishT<best;
+  const key="closeHauledBest_"+levelKey,prev=getBest(levelKey);
+  const isBest=!prev||r.finishT<prev;let best=prev;
   if(isBest){best=r.finishT;try{localStorage.setItem(key,String(r.finishT));}catch(e){}}
   $("fTitle").textContent=pos===1?"You won!":"You finished "+ord(pos);
   $("fTable").innerHTML=rows.map((x,i)=>'<li class="'+(x.me?"me":"")+'"><span class="pos">'+(i+1)+'</span><span class="nm">'+
@@ -983,10 +1026,26 @@ function finishRace(){
     '</span><span class="tm">'+(x.rs.finished?fmt(x.rs.finishT):"DNF")+"</span></li>").join("");
   $("fStart").textContent=r.startLate<1?"On the gun":fmt(r.startLate)+" late";
   $("fPen").textContent=r.pen?"+"+r.pen+" s":"none";
-  $("fBest").textContent=fmt(best)+(isBest?"  new best":"")+" ("+LV().label.toLowerCase()+" wind)";
+  $("fBest").innerHTML=isBest?'<b class="pbTag">'+fmt(best)+" ★ new</b>":fmt(best)+' <span class="behind">(you were +'+(r.finishT-best).toFixed(1)+" s)</span>";
+  $("fPB").hidden=!isBest;
+  if(isBest){
+    $("fPBsub").textContent=prev?(prev-r.finishT).toFixed(1)+" s faster than your old best of "+fmt(prev)+" in "+LV().label.toLowerCase()+" wind":
+      "Your first finish in "+LV().label.toLowerCase()+" wind: that's the time to beat";
+    celebrate();
+  }
   show("finish",true);$("again").focus();
 }
 
+
+// a personal best: a short fanfare and a burst of confetti over the results
+function celebrate(){
+  [523,659,784,1047].forEach((f,i)=>tone(f,0.35,"triangle",0.16,0.9+i*0.13));tone(1568,0.9,"sine",0.1,1.45);
+  if(reduce)return;
+  const card=$("fCard"),cols=["#ffd447","#ff7b30","#71e3a6","#4fc3ff","#f4f1e8","#b07cf2"];
+  for(let i=0;i<70;i++){const c=document.createElement("i");c.className="confetti";
+    c.style.cssText="left:"+(Math.random()*100)+"%;background:"+cols[i%cols.length]+";animation-delay:"+(Math.random()*0.6).toFixed(2)+"s;animation-duration:"+(1.6+Math.random()*1.4).toFixed(2)+"s;--dx:"+((Math.random()-0.5)*160).toFixed(0)+"px;--r:"+(Math.random()*720-360).toFixed(0)+"deg";
+    card.appendChild(c);setTimeout(()=>c.remove(),3600);}
+}
 
 // ════════════════════════════════════════════════════════════════════
 // COMPUTER BOATS AND RIGHT OF WAY
@@ -2569,6 +2628,46 @@ function drawMinimap(){
   mctx.fillStyle="#ff7b30";mctx.beginPath();mctx.moveTo(0,-6);mctx.lineTo(4,4);mctx.lineTo(-4,4);mctx.closePath();mctx.fill();mctx.restore();
 }
 
+// ---------- best possible speed ----------
+// The steady speed this boat reaches at a given true wind angle and strength, sailed as well as possible:
+// sail at its best angle (or eased to spill wind if that would heel her too far), crew placed to keep her
+// as flat as they can. Worked out with the game's own physics, on demand, on a grid (5° x 1 knot) that
+// is cached and interpolated.
+const BB=[];for(let i=0;i<=160;i++)BB.push(bestBoom(i*0.02));
+const bestBoomFast=a=>BB[Math.min(160,Math.round(a/0.02))];
+const POLAR=new Map();
+function steadySpeed(twa,W){
+  let best=0;
+  for(const ease of [0,0.12,0.25,0.4,0.6]){
+    const b={h:0,u:50,v:0,heel:0,sheet:0.6};let ok=true;
+    for(let i=0;i<220;i++){
+      const F=sailForces(b,W,twa);
+      b.sheet=clamp(bestBoomFast(Math.abs(F.awa))+ease,K.sheetMin,K.sheetMax);
+      const hd=1+1.5*Math.max(0,Math.abs(b.heel)-0.15);
+      b.u+=(F.fu-(K.drag*b.u*Math.abs(b.u)+K.lin*b.u)*hd)*0.1;b.v+=(F.fv-K.lat*b.v)*0.1;
+      const m0=K.heelWind*F.side,m=m0+K.crew*clamp(-m0/K.crew,-1,1);   // heel left over with the crew hiking
+      b.heel=Math.asin(clamp(m,-1,1));
+      if(i>150&&Math.abs(b.heel)>K.capsize*0.85){ok=false;break;}
+    }
+    if(ok)best=Math.max(best,b.u);
+  }
+  return best;
+}
+function bestSpeed(twa,W){
+  const a=Math.min(180,Math.abs(twa)*D)/5,w=W/PX_PER_KN,a0=Math.floor(a),w0=Math.floor(w),fa=a-a0,fw=w-w0;
+  const at=(i,j)=>{const key=K.capsize+":"+i+":"+j;let v=POLAR.get(key);if(v===undefined){v=steadySpeed(Math.min(36,i)*5/D,j*PX_PER_KN);POLAR.set(key,v);}return v;};
+  return (at(a0,w0)*(1-fa)+at(a0+1,w0)*fa)*(1-fw)+(at(a0,w0+1)*(1-fa)+at(a0+1,w0+1)*fa)*fw;
+}
+// fill in the grid for the current wind level a few points at a time in spare moments, so no lookup
+// during play ever has to do the work
+function warmPolar(){
+  const L=LV(),j0=Math.max(0,Math.floor(L.spd[0]*0.6/PX_PER_KN)),j1=Math.ceil(L.spd[1]*(1+L.gust[1])*1.15/PX_PER_KN)+1,todo=[];
+  for(let j=j0;j<=j1;j++)for(let i=0;i<=36;i++)todo.push([i,j]);
+  const run=()=>{const t0=performance.now();
+    while(todo.length&&performance.now()-t0<4){const [i,j]=todo.pop();bestSpeed(i*5/D,j*PX_PER_KN);}
+    if(todo.length)setTimeout(run,30);};
+  setTimeout(run,300);
+}
 // ---------- side panel + HUD text ----------
 function buildSide(){
   const race=S.mode==="race";
@@ -2587,14 +2686,46 @@ function pointOfSail(twaDeg){
   return "Running";
 }
 let hudT=0;
+// the sail pane fills the space on the right, from under the top-right panel down to the instruments
+function layoutSailPanel(){
+  const sp=$("sailPanel"),side=$("side"),ins=$("instr").getBoundingClientRect();
+  const sideR=side.getBoundingClientRect(),top=(sideR.height>0?sideR.bottom:0)+12,bottom=ins.top-12;
+  const room=Math.max(60,bottom-top),hgt=Math.min(460,room);
+  sp.style.top=Math.round(top+(room-hgt)/2)+"px";sp.style.height=Math.round(hgt)+"px";
+}
 function updateHUD(){
+  layoutSailPanel();
   const b=S.boat,F=S.F;if(!F)return;
   const kn=b.u/PX_PER_KN, twa=wrap(S.wind.from-b.h), twaD=Math.abs(twa)*D;
-  const head=((b.h*D)%360+360)%360, wf=((S.wind.from*D)%360+360)%360;
   $("rSpeed").innerHTML=(kn<0?"−":"")+Math.abs(kn).toFixed(1)+"<small>kn</small>";
-  $("rHead").textContent=String(Math.round(head)%360).padStart(3,"0")+"°";
-  $("rWind").innerHTML=String(Math.round(wf)%360).padStart(3,"0")+"°<small>"+(F.tws/PX_PER_KN).toFixed(0)+"kn</small>";
-  $("bSheet").style.width=(b.sheet/K.sheetMax*100).toFixed(1)+"%";
+  // how close to the best possible speed for this wind angle and strength
+  const best=bestSpeed(twa,F.tws),pc=$("rPct");
+  if(b.capsized){pc.textContent="capsized";pc.style.color="var(--bad)";}
+  else if(best<0.6*PX_PER_KN){pc.textContent="no-go zone: no drive";pc.style.color="var(--bad)";}
+  else{const pct=Math.round(clamp(b.u/best,0,1)*100);   // (can briefly beat 'best' carrying speed out of a gust)
+    pc.textContent=pct+"% of best ("+(best/PX_PER_KN).toFixed(1)+")";
+    pc.style.color=pct>=85?"var(--good)":pct>=60?"var(--warn)":"var(--bad)";}
+  // second readout: in a race, speed made good towards where you're going; in open water, the wind strength
+  if(S.mode==="race"){
+    const t=targetPoint(),r=S.race;
+    if(t){const fx=Math.sin(b.h),fy=-Math.cos(b.h),rx=Math.cos(b.h),ry=Math.sin(b.h),dx=t.x-b.x,dy=t.y-b.y,dl=Math.hypot(dx,dy)||1;
+      const vmg=((b.u*fx+b.v*rx)*dx+(b.u*fy+b.v*ry)*dy)/dl/PX_PER_KN;
+      $("r2Lbl").textContent="Towards "+(!r.started?"start":r.next>=MARKS.length?"finish":"mark");
+      $("r2").innerHTML=(vmg<0?"−":"")+Math.abs(vmg).toFixed(1)+"<small>kn</small>";
+      $("r2Sub").textContent=!r.started?"start line":r.next>=MARKS.length?"finish line":MARKS[r.next].name;
+      $("r2").style.color=vmg<0?"var(--bad)":"";}
+    else{$("r2Lbl").textContent="Towards mark";$("r2").innerHTML="–";$("r2Sub").innerHTML="&nbsp;";}
+  }else{
+    $("r2Lbl").textContent="Wind";$("r2").style.color="";
+    $("r2").innerHTML=(F.tws/PX_PER_KN).toFixed(0)+"<small>kn</small>";
+    $("r2Sub").textContent=F.gust>0.08?"in a gust":F.gust<-0.06?"in a lull":"steady";
+  }
+  // sail angle: where it is (tick) against the right setting for this wind angle (green zone)
+  const sMax=K.sheetMax,absAw=Math.abs(F.awa),optB=bestBoom(absAw);
+  $("bSheet").style.height=(F.boom/sMax*100).toFixed(1)+"%";$("tSheet").style.top=(F.boom/sMax*100).toFixed(1)+"%";
+  const zs=$("zSheet");
+  if(absAw<0.62||b.capsized)zs.style.height="0";
+  else{const lo=Math.max(0,optB-0.14),hi=Math.min(sMax,optB+0.14,absAw);zs.style.top=(lo/sMax*100).toFixed(1)+"%";zs.style.height=(Math.max(0,hi-lo)/sMax*100).toFixed(1)+"%";}
   $("rSheet").textContent=Math.round(F.boom*D)+"°";
   const rp=b.rudder*50;
   $("bRudder").style.left=(rp<0?50+rp:50)+"%";$("bRudder").style.width=Math.abs(rp)+"%";
@@ -2604,8 +2735,6 @@ function updateHUD(){
   const bh=$("bHeel");bh.style.left=(hd<0?50-ha*50:50)+"%";bh.style.width=(ha*50)+"%";
   bh.style.background=b.capsized?"var(--bad)":Math.abs(hd)>24?"var(--bad)":Math.abs(hd)>12?"var(--warn)":"var(--good)";
   $("rHeel").textContent=b.capsized?"over":Math.round(Math.abs(hd))+"°"+(Math.abs(hd)>=1?(hd>0?" S":" P"):"");
-  const bc=$("bCrew");bc.style.left=(b.crew<0?50+b.crew*50:50)+"%";bc.style.width=Math.abs(b.crew*50)+"%";
-  $("rCrew").textContent=Math.abs(b.crew)<0.05?"mid":Math.round(Math.abs(b.crew)*100)+"% "+(b.crew>0?"S":"P");
   $("touchUp").hidden=!b.capsized;
   // lift / header
   const shD=S.shift*D,sl=$("shiftLabel");
@@ -2651,6 +2780,10 @@ function updateHUD(){
   else tip="Running downwind: let the sail all the way out. Turning the stern through the wind swings the boom across (a gybe).";
   if(F.gust>0.08&&S.mode)tip+=" You're in a gust.";
   const c=$("trimChip");c.textContent=chip;c.className="chip "+cls;
+  // beside the sail gauge: the same verdict, with the key that fixes it
+  const hint=chip==="Too loose"||chip==="Luffing"?" ↑":chip==="Too tight"?" ↓":"";
+  const st=$("sState");st.textContent=chip+hint;st.className="vstate "+cls;
+  st.style.top=$("tSheet").style.top||"50%";$("tSheet").className="tick "+cls;
   $("tip").textContent=tip;
 
   if(S.mode==="race"){
@@ -2658,7 +2791,7 @@ function updateHUD(){
     const rem=r.gun-S.t;
     $("statusMain").textContent=r.stage==="pre"?"−"+fmt(Math.max(0,rem)).replace(/\.\d$/,""):fmt(r.time)+(r.pen?"  +"+r.pen+"s":"");
     const place=r.started?" · <b>"+ord(playerPosition())+"</b> of "+(S.ais.length+1):"";
-    $("statusSub").innerHTML=r.ocs?"<b>Over early</b>: go back below the line":r.stage==="pre"?"Countdown to the start gun":!r.started?"<b>Cross the start line!</b>":
+    $("statusSub").innerHTML=r.ocs?"<b>Over early</b>: go back below the line":r.stage==="pre"?"Countdown to the start gun"+(getBest(levelKey)?' · <span style="color:var(--mark)">★ best '+fmt(getBest(levelKey))+"</span>":""):!r.started?"<b>Cross the start line!</b>":
       (r.next<MARKS.length?"Next: <b>"+MARKS[r.next].name+"</b> ("+(r.next+1)+" of 3), keep it on your left":"Next: <b>Finish line</b>, cross it going upwind")+place;
   }else{
     const o=S.open;
