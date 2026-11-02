@@ -429,13 +429,17 @@ function sailForces(b,W,from){
   const tip=Math.pow(Math.max(0,Math.cos(b.heel||0)),1.5);             // a heeled sail catches less wind
   const Fn=K.sail*aws*aws*sailCoef(alpha)*pt*pt*(3-2*pt)*tip;
   // Which side the sail is on (+1 = starboard). Normally the leeward side. Going past dead downwind the sail
-  // stays where it is ("sailing by the lee") until the wind gets behind it, about 15° past (true wind), sooner with
+  // stays where it is ("sailing by the lee") until the wind gets behind it: about 24° past dead downwind with the sail right out, sooner with
   // the sail pulled in: then it slams across. That's a gybe. Forward of the beam it just flops across as it
   // luffs through the wind, as in a tack.
   const nat=awa>=0?-1:1;let lee=b.sailSide||nat;
   if(lee!==nat){
-    const byLee=Math.PI-absA;                                        // how far past dead downwind
-    if(absA<Math.PI/2||byLee>(b.sheet<0.6?0.22:0.5))lee=nat;
+    if(absA<Math.PI/2)lee=nat;                                       // forward of the beam: it just flops across
+    else{
+      // how far past dead downwind the (true) wind has come round, on the side the sail is on
+      const twa=wrap(from-b.h),byLee=lee===(twa>=0?1:-1)?Math.PI-Math.abs(twa):-1;
+      if(byLee>0.17+0.25*clamp((b.sheet-0.4)/1.05,0,1))lee=nat;   // about 10° with the sail in, 24° let right out
+    }
   }
   b.sailSide=lee;
   const drive=Fn*Math.sin(boom), side=Fn*Math.cos(boom)*lee;
