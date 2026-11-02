@@ -32,6 +32,11 @@
 html,body{height:100%;overflow:hidden}
 body{background:var(--sea-deep);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45}
 #sea{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none}
+/* sunlight over the sea: warm glare from the top left and darker edges, composited by the browser */
+#light{position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 85% 75% at 10% -15%,rgba(255,226,168,0.20),rgba(255,226,168,0.06) 45%,rgba(255,226,168,0) 75%),
+             radial-gradient(ellipse 75% 70% at 50% 50%,rgba(0,10,18,0) 55%,rgba(0,10,18,0.5) 100%);
+  mix-blend-mode:normal}
 button{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--mark);outline-offset:2px}
 
@@ -159,6 +164,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 <body>
 
 <canvas id="sea" tabindex="0" aria-label="Sailing game view"></canvas>
+<div id="light" aria-hidden="true"></div>
 
 <div id="hud" hidden>
   <div class="row top">
@@ -189,7 +195,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
       <div class="bar"><span class="lbl">Rudder</span><div class="track center"><div class="fill" id="bRudder"></div></div><span class="num" id="rRudder">0°</span></div>
       <div class="bar"><span class="lbl">Heel</span><div class="track center heel"><div class="fill" id="bHeel"></div></div><span class="num" id="rHeel">0°</span></div>
       <div class="bar"><span class="lbl">Crew</span><div class="track center crew"><div class="fill" id="bCrew"></div></div><span class="num" id="rCrew">mid</span></div>
-      <div class="keys"><kbd>←</kbd><kbd>→</kbd> steer · <kbd>↑</kbd><kbd>↓</kbd> sail in / out · <kbd>Q</kbd><kbd>E</kbd> or two-finger swipe: lean · <kbd>Space</kbd> right a capsize · <kbd>T</kbd> auto-trim <span id="autoTag"></span> · <kbd>N</kbd> sound · <kbd>P</kbd> pause</div>
+      <div class="keys"><kbd>←</kbd><kbd>→</kbd> steer · <kbd>↑</kbd><kbd>↓</kbd> sail in / out · <kbd>Q</kbd><kbd>E</kbd> or two-finger swipe across the boat: lean · <kbd>Space</kbd> right a capsize · <kbd>T</kbd> auto-trim <span id="autoTag"></span> · <kbd>N</kbd> sound · <kbd>P</kbd> pause</div>
     </section>
   </div>
 </div>
@@ -221,7 +227,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
         <div class="keymap">
           <span><kbd>←</kbd> <kbd>→</kbd></span><span>Rudder: steer left / right (also <kbd>A</kbd> <kbd>D</kbd>)</span>
           <span><kbd>↑</kbd> <kbd>↓</kbd></span><span>Pull the sail in / let it out (also <kbd>W</kbd> <kbd>S</kbd>)</span>
-          <span><kbd>Q</kbd> <kbd>E</kbd></span><span>Lean your weight to the boat's left / right. A two-finger sideways swipe on a touchpad does the same (<kbd>I</kbd> reverses it)</span>
+          <span><kbd>Q</kbd> <kbd>E</kbd></span><span>Lean your weight to the boat's left / right. On a touchpad, swipe two fingers across the boat, in the direction you want the sailor to move. The swipe turns with the boat: across it works best, diagonally partly, and along it (bow to stern) not at all (<kbd>I</kbd> reverses it)</span>
           <span><kbd>Space</kbd></span><span>Hold to pull the boat upright after a capsize</span>
           <span><kbd>T</kbd></span><span>Auto-trim the sail while you learn to steer</span>
           <span><kbd>N</kbd></span><span>Sound on / off</span>
@@ -238,7 +244,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
     <div class="keymap">
       <span><kbd>←</kbd> <kbd>→</kbd></span><span>Steer left / right</span>
       <span><kbd>↑</kbd> <kbd>↓</kbd></span><span>Pull sail in / let sail out</span>
-      <span><kbd>Q</kbd> <kbd>E</kbd></span><span>Lean left / right (or two-finger swipe)</span>
+      <span><kbd>Q</kbd> <kbd>E</kbd></span><span>Lean left / right (or swipe two fingers across the boat)</span>
       <span><kbd>I</kbd></span><span>Reverse the swipe direction</span>
       <span><kbd>Space</kbd></span><span>Hold to right a capsized boat</span>
       <span><kbd>T</kbd></span><span>Auto-trim on / off</span>
@@ -247,7 +253,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
       <span><kbd>R</kbd></span><span>Restart this mode</span>
       <span><kbd>M</kbd></span><span>Back to menu</span>
     </div>
-    <div class="btns"><button class="btn primary" id="resume">Resume (P)</button><button class="btn" id="toMenu1">Menu (M)</button></div>
+    <div class="btns"><button class="btn primary" id="resume">Resume (P)</button><button class="btn" id="restart">Restart (R)</button><button class="btn" id="toMenu1">Menu (M)</button></div>
   </div>
 </div>
 
@@ -443,6 +449,7 @@ function startMode(mode){
   }else{
     S.wind.base=0;S.wind.from=0;S.wind.speed=LV().start;
     S.boat=newBoat(-140,260,Math.PI/2);
+    S.boat.sheet=K.sheetMax;S.boat.boomDraw=1.2;   // races start with the sail let right out (no drive until you sheet in)
     S.boat.u=20;
     S.obstacles=raceObstacles();
     S.race={stage:"pre",gun:COUNTDOWN,signals:[30,20,10,5,4,3,2,1,0],time:0,...newRacerState()};
@@ -533,6 +540,7 @@ setLevel(levelKey);
 $("goOpen").onclick=()=>startMode("open");
 $("goRace").onclick=()=>startMode("race");
 $("resume").onclick=togglePause;
+$("restart").onclick=()=>{startMode(S.mode);cv.focus();};
 $("toMenu1").onclick=toMenu;$("toMenu2").onclick=toMenu;
 $("again").onclick=()=>startMode("race");
 function toast(text,cls){
@@ -568,15 +576,19 @@ window.addEventListener("keydown",e=>{
   else if(c==="KeyH"){S.tips=!S.tips;document.getElementById("tipPanel").style.visibility=S.tips?"visible":"hidden";}
 });
 window.addEventListener("keyup",e=>keys.delete(e.code));
-// Two-finger sideways swipe on a touchpad moves the crew. Fingers right = lean to the boat's right (starboard).
+// Two-finger swipe on a touchpad drags the crew across the boat. The swipe axis turns with the boat:
+// only the part of the swipe across the boat counts, so fingers moving towards the boat's starboard side
+// on screen move the sailor to starboard. A swipe along the boat (bow to stern) does nothing.
 window.addEventListener("wheel",e=>{
   if(S.mode==="menu"||S.paused||finishOpen())return;
   e.preventDefault();
-  let dx=e.deltaX;
-  if(!dx&&e.shiftKey)dx=e.deltaY;
-  if(e.deltaMode===1)dx*=16;else if(e.deltaMode===2)dx*=400;
-  if(!dx||!S.boat||S.boat.capsized)return;
-  S.boat.crew=clamp(S.boat.crew-dx*0.005*(S.invert?-1:1),-1,1);
+  const b=S.boat;if(!b||b.capsized)return;
+  let k=e.deltaMode===1?16:e.deltaMode===2?400:1;
+  const fx=-e.deltaX*k,fy=-e.deltaY*k;                      // finger movement on screen (y down)
+  const across=fx*Math.cos(b.h)+fy*Math.sin(b.h);           // component towards starboard
+  if(!across)return;
+  b.crew=clamp(b.crew+across*0.005*(S.invert?-1:1),-1,1);
+  S.swipeT=S.t;S.swipeDir=Math.sign(across)*(S.invert?-1:1);
 },{passive:false});
 window.addEventListener("blur",()=>{keys.clear();touchHeld.clear();});
 document.querySelectorAll("#touch button").forEach(btn=>{
@@ -833,7 +845,7 @@ function stepFx(dt){
   for(const f of S.fx){
     f.life-=dt;
     if(f.k==="ring")f.r+=26*dt;
-    else{f.vz-=260*dt;f.x+=f.vx*dt;f.y+=f.vy*dt;f.z+=f.vz*dt;if(f.z<=0){f.life=0;S.fx.push({k:"ring",x:f.x,y:f.y,r:1.5,life:0.5});}}
+    else{f.vz-=260*dt;f.x+=f.vx*dt;f.y+=f.vy*dt;f.z+=f.vz*dt;if(f.z<=0){f.life=0;if(!f.spray||Math.random()<0.3)S.fx.push({k:"ring",x:f.x,y:f.y,r:1.5,life:f.spray?0.3:0.5});}}
   }
   S.fx=S.fx.filter(f=>f.life>0);
   if(S.fx.length>500)S.fx.splice(0,S.fx.length-500);
@@ -842,7 +854,9 @@ function drawFx(kind){
   for(const f of S.fx){
     if(f.k!==kind)continue;
     if(f.k==="ring"){ctx.strokeStyle="rgba(235,248,246,"+(0.6*Math.min(1,f.life)).toFixed(2)+")";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,TAU);ctx.stroke();}
-    else{const q=toView(f);ctx.fillStyle="rgba(235,248,246,0.85)";ctx.beginPath();ctx.arc(q[0],q[1],1.4,0,TAU);ctx.fill();}
+    else{const q=toView(f),s=f.spray?1:1.4;
+      ctx.fillStyle="rgba(0,12,22,0.18)";ctx.beginPath();ctx.arc(f.x+f.z*SUN.x,f.y+f.z*SUN.y,s,0,TAU);ctx.fill();
+      ctx.fillStyle="rgba(240,250,248,0.9)";ctx.beginPath();ctx.arc(q[0],q[1],s,0,TAU);ctx.fill();}
   }
 }
 
@@ -971,9 +985,9 @@ function finishRace(){
 // COMPUTER BOATS AND RIGHT OF WAY
 // ════════════════════════════════════════════════════════════════════
 const AI_CREW=[
-  {name:"Blue Bosun",  look:{stripe:"#3f8ef0",sail:"rgba(208,228,255,0.93)",shirt:"#2a64c8"},skill:0.88,lineX:-170,x:-40, y:340,h:Math.PI/2},
-  {name:"Green Galleon", look:{stripe:"#3cc483",sail:"rgba(214,246,228,0.93)",shirt:"#1f9a60"},skill:0.955,lineX:20, y:300,x:110, h:-Math.PI/2},
-  {name:"Purple Puffin",look:{stripe:"#b07cf2",sail:"rgba(236,224,255,0.93)",shirt:"#7a4cc4"},skill:0.975,lineX:170,x:240,y:380,h:-Math.PI/2}
+  {name:"Blue Bosun",  look:{stripe:"#3f8ef0",sail:"rgba(208,228,255,0.93)",shirt:"#2a64c8",top:"#e9eef2",skin:"#b97a52",hat:"#1d2a3a",legs:"#1f2a36"},skill:0.88,lineX:-170,x:-40, y:340,h:Math.PI/2},
+  {name:"Green Galleon", look:{stripe:"#3cc483",sail:"rgba(214,246,228,0.93)",shirt:"#1f9a60",top:"#2b2f33",skin:"#7d4f33",hat:"#f2c94b",legs:"#2b2f33"},skill:0.955,lineX:20, y:300,x:110, h:-Math.PI/2},
+  {name:"Purple Puffin",look:{stripe:"#b07cf2",sail:"rgba(236,224,255,0.93)",shirt:"#7a4cc4",top:"#f2f2f2",skin:"#f0c8a4",hat:null,hair:"#b8652a",legs:"#3a2f4a"},skill:0.975,lineX:170,x:240,y:380,h:-Math.PI/2}
 ];
 function makeAI(c){
   const b=newBoat(c.x,c.y,c.h);b.u=18;b.look=c.look;
@@ -1163,29 +1177,92 @@ function stepOpen(b,dt,px,py){
 // ════════════════════════════════════════════════════════════════════
 const cv=$("sea"),ctx=cv.getContext("2d");
 let W=0,H=0,DPR=1;
-function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);}
+// Graphics quality: 2 = everything, 1 = fewer water layers, 0 = plainest, -1 = plainest at reduced resolution.
+// It steps down by itself if frames keep running slow, and back up if they run fast for a while (main loop).
+let GQ=2,slowT=0,fastT=0,warmT=0;
+function resize(){DPR=Math.min(GQ<0?1.5:2,window.devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);}
 window.addEventListener("resize",resize);resize();
 
 function worldTransform(){
   ctx.setTransform(DPR*S.zoom,0,0,DPR*S.zoom,DPR*(W/2-S.cam.x*S.zoom),DPR*(H/2-S.cam.y*S.zoom));
 }
+// ---- procedural textures, painted once at start-up and tiled as patterns ----
+// Tiles are painted at TEX_RES pixels per world unit so they stay sharp on high-resolution screens.
+const TEX_RES=2;
+function makeTile(n,paint,res=TEX_RES){const c=document.createElement("canvas");c.width=c.height=n*res;c.res=res;
+  const g=c.getContext("2d");g.scale(res,res);paint(g,n,res);return c;}
+const rnd=(()=>{let s=7;return()=>(s=(s*16807)%2147483647)/2147483647;})();
+// fine chop: lots of little light and dark ripple facets, wrapped so the tile repeats seamlessly
+const TEX_CHOP=makeTile(256,(g,n)=>{
+  for(let i=0;i<900;i++){
+    const x=rnd()*n,y=rnd()*n,rx=1.2+rnd()*3.2,ry=0.5+rnd()*0.8,a=rnd()*Math.PI,lt=rnd()<0.5;
+    g.fillStyle=lt?"rgba(215,245,245,"+(0.05+rnd()*0.09).toFixed(3)+")":"rgba(0,18,30,"+(0.06+rnd()*0.10).toFixed(3)+")";
+    for(const ox of [-n,0,n])for(const oy of [-n,0,n]){g.beginPath();g.ellipse(x+ox,y+oy,rx,ry,a,0,TAU);g.fill();}
+  }
+});
+// smooth value noise: big soft patches of greener (shallower) and darker (deeper) water
+const TEX_DEPTH=makeTile(64,(g,n)=>{   // smooth, so low resolution is fine
+  const G=6,v=[];for(let i=0;i<G*G;i++)v.push(rnd());
+  const V=(a,b)=>v[((b%G+G)%G)*G+((a%G+G)%G)],sm=t=>t*t*(3-2*t),im=g.createImageData(n,n);
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+    const fx=x/n*G,fy=y/n*G,i=Math.floor(fx),j=Math.floor(fy),u=sm(fx-i),w=sm(fy-j);
+    const d=(V(i,j)*(1-u)+V(i+1,j)*u)*(1-w)+(V(i,j+1)*(1-u)+V(i+1,j+1)*u)*w-0.5,o=(y*n+x)*4;
+    if(d>0){im.data[o]=70;im.data[o+1]=175;im.data[o+2]=165;im.data[o+3]=d*120;}
+    else{im.data[o]=0;im.data[o+1]=8;im.data[o+2]=22;im.data[o+3]=-d*150;}
+  }
+  g.putImageData(im,0,0);
+},1);
+// caustics: the bright net of light that ripples focus onto a shallow sea bed (cell edges of a Voronoi pattern)
+const TEX_CAUSTIC=makeTile(128,(g,n,res)=>{
+  const pts=[];for(let i=0;i<15;i++)pts.push([rnd()*n,rnd()*n]);
+  const N=n*res,im=g.createImageData(N,N);
+  for(let Y=0;Y<N;Y++)for(let X=0;X<N;X++){
+    const x=X/res,y=Y/res;let f1=1e9,f2=1e9;
+    for(const [px,py] of pts){let dx=Math.abs(x-px),dy=Math.abs(y-py);dx=Math.min(dx,n-dx);dy=Math.min(dy,n-dy);
+      const d=Math.hypot(dx,dy);if(d<f1){f2=f1;f1=d;}else if(d<f2)f2=d;}
+    const e=Math.max(0,1-(f2-f1)/4.5),o=(Y*N+X)*4;
+    im.data[o]=205;im.data[o+1]=255;im.data[o+2]=238;im.data[o+3]=Math.pow(e,2.2)*210;
+  }
+  g.putImageData(im,0,0);
+});
+const PAT={};
+const pat=(name,tile)=>PAT[name]||(PAT[name]=Object.assign(ctx.createPattern(tile,"repeat"),{res:tile.res||1}));
+// fill a rectangle with a pattern scaled by sc and shifted by (ox,oy) in world units
+function patFill(p,sc,ox,oy,x,y,w,h,alpha,op){
+  sc/=p.res;p.setTransform(new DOMMatrix([sc,0,0,sc,ox,oy]));
+  ctx.globalAlpha=alpha;if(op)ctx.globalCompositeOperation=op;
+  ctx.fillStyle=p;ctx.fillRect(x,y,w,h);
+  ctx.globalAlpha=1;ctx.globalCompositeOperation="source-over";
+}
+function viewRect(m){const z=S.zoom,vw=W/z,vh=H/z;return {x0:S.cam.x-vw/2-m,y0:S.cam.y-vh/2-m,x1:S.cam.x+vw/2+m,y1:S.cam.y+vh/2+m,vw,vh};}
+
 function drawWater(){
   ctx.setTransform(DPR,0,0,DPR,0,0);
-  const g=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*0.75);
-  g.addColorStop(0,"#11586b");g.addColorStop(1,"#08364a");
-  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="#0f566b";ctx.fillRect(0,0,W,H);
   worldTransform();
-  const z=S.zoom,vw=W/z,vh=H/z,x0=S.cam.x-vw/2-80,y0=S.cam.y-vh/2-80,x1=x0+vw+160,y1=y0+vh+160;
+  const {x0,y0,x1,y1}=viewRect(80),RW=x1-x0,RH=y1-y0;
   const f=S.wind.from,tx=-Math.sin(f),ty=Math.cos(f),qx=-ty,qy=tx;
-  // gusts: darker, rougher patches
+  const windK=clamp(S.wind.speed/180,0.25,1);
+  // big soft patches of colour, fixed to the sea bed
+  if(GQ>0)patFill(pat("depth",TEX_DEPTH),40,0,0,x0,y0,RW,RH,1);
+  // fine chop: two layers drifting downwind at different speeds, so the surface shimmers
+  const cp=pat("chop",TEX_CHOP),cx0=S.chopX||0,cy0=S.chopY||0;
+  patFill(cp,1,cx0%256,cy0%256,x0,y0,RW,RH,0.22+0.3*windK);
+  if(GQ>1)patFill(cp,1.9,(cx0*0.5+137)%486.4,(cy0*0.5+71)%486.4,x0,y0,RW,RH,0.12+0.18*windK);
+  // gusts: darker, rougher patches ("cat's paws"), with extra chop inside
   for(const gu of S.gusts){
     if(gu.x+gu.r<x0||gu.x-gu.r>x1||gu.y+gu.r<y0||gu.y-gu.r>y1)continue;
+    const k=gu.s/0.4;
     const rg=ctx.createRadialGradient(gu.x,gu.y,0,gu.x,gu.y,gu.r);
-    rg.addColorStop(0,"rgba(2,22,34,"+(0.45*gu.s/0.4).toFixed(3)+")");rg.addColorStop(1,"rgba(2,22,34,0)");
+    rg.addColorStop(0,"rgba(2,22,34,"+(0.42*k).toFixed(3)+")");rg.addColorStop(0.6,"rgba(2,22,34,"+(0.22*k).toFixed(3)+")");rg.addColorStop(1,"rgba(2,22,34,0)");
     ctx.fillStyle=rg;ctx.beginPath();ctx.arc(gu.x,gu.y,gu.r,0,TAU);ctx.fill();
+    if(GQ<2)continue;
+    ctx.save();ctx.beginPath();ctx.arc(gu.x,gu.y,gu.r*0.6,0,TAU);ctx.clip();
+    patFill(cp,0.75,(cx0*1.5)%192,(cy0*1.5)%192,gu.x-gu.r*0.6,gu.y-gu.r*0.6,gu.r*1.2,gu.r*1.2,0.35*k);
+    ctx.restore();
   }
   // wind streaks along the wind
-  const sc=210,rate=S.wind.speed/110;
+  const sc=210;
   ctx.lineCap="round";ctx.strokeStyle="#cfe9ea";ctx.lineWidth=1.4;
   for(let i=Math.floor(x0/sc);i<=Math.ceil(x1/sc);i++)for(let j=Math.floor(y0/sc);j<=Math.ceil(y1/sc);j++){
     const h1=hash(i+91,j),h2=hash2(i,j+57);
@@ -1194,23 +1271,61 @@ function drawWater(){
     ctx.globalAlpha=Math.sin(p*Math.PI)*(0.05+0.06*h1);
     ctx.beginPath();ctx.moveTo(cx-tx*len/2,cy-ty*len/2);ctx.lineTo(cx+tx*len/2,cy+ty*len/2);ctx.stroke();
   }
-  // wave crests across the wind, rolling downwind
-  const cell=54;ctx.lineWidth=1.8;
+  ctx.globalAlpha=1;
+  // wave crests across the wind, rolling downwind: a lit crest with a darker trough just downwind of it.
+  // Strokes are grouped into a few brightness levels so each level is one path.
+  const cell=54,NB=6,lit=[],dark=[],caps=new Path2D(),foam=new Path2D();
+  for(let k=0;k<NB;k++){lit.push(new Path2D());dark.push(new Path2D());}
   for(let i=Math.floor(x0/cell);i<=Math.ceil(x1/cell);i++)for(let j=Math.floor(y0/cell);j<=Math.ceil(y1/cell);j++){
     const h1=hash(i,j),h2=hash2(i,j);
     const p=(S.wavePh+h1)%1;
     let cx=i*cell+h2*cell,cy=j*cell+hash(j,i)*cell;
     cx+=tx*(p-0.5)*46;cy+=ty*(p-0.5)*46;
     const g2=windAt(cx,cy).gust, len=(10+16*h1)*(1+g2);
-    ctx.globalAlpha=Math.sin(p*Math.PI)*(0.12+0.2*h2)*(1+g2*1.5);
-    ctx.beginPath();
-    ctx.moveTo(cx-qx*len/2-tx*len*0.12,cy-qy*len/2-ty*len*0.12);
-    ctx.quadraticCurveTo(cx+tx*len*0.18,cy+ty*len*0.18,cx+qx*len/2-tx*len*0.12,cy+qy*len/2-ty*len*0.12);
-    ctx.stroke();
+    const a=Math.sin(p*Math.PI)*(0.12+0.2*h2)*(1+g2*1.5);
+    const bin=clamp(Math.floor(a/0.6*NB),0,NB-1)||0;     // lulls (negative gusts) can make a < 0
+    const ax=cx-qx*len/2-tx*len*0.12,ay=cy-qy*len/2-ty*len*0.12,bx=cx+qx*len/2-tx*len*0.12,by=cy+qy*len/2-ty*len*0.12;
+    const mx=cx+tx*len*0.18,my=cy+ty*len*0.18;
+    lit[bin].moveTo(ax,ay);lit[bin].quadraticCurveTo(mx,my,bx,by);
+    dark[bin].moveTo(ax+tx*3,ay+ty*3);dark[bin].quadraticCurveTo(mx+tx*3,my+ty*3,bx+tx*3,by+ty*3);
+    // whitecaps: in a fresh breeze the bigger crests break into foam, leaving a trail of bubbles
+    const kn=S.wind.speed*(1+g2)/PX_PER_KN;
+    if(kn>11.5&&h2>1.05-(kn-11.5)*0.06&&p>0.3&&p<0.85){
+      // the crest curls over into a short band of white water, then breaks up into bubbles behind it
+      const q=(p-0.3)/0.55,sh=0.5-q*0.25;
+      caps.moveTo(cx-qx*len*sh-tx*len*0.1,cy-qy*len*sh-ty*len*0.1);
+      caps.quadraticCurveTo(mx-tx*1.5,my-ty*1.5,cx+qx*len*sh-tx*len*0.1,cy+qy*len*sh-ty*len*0.1);
+      for(let d=0;d<5;d++){const u=(hash(i+d,j)-0.5)*len*0.7,back=2+d*1.7+q*9,bx2=mx+qx*u-tx*back,by2=my+qy*u-ty*back,br=0.5+0.9*(1-q)*hash2(j,i+d);
+        foam.moveTo(bx2+br,by2);foam.arc(bx2,by2,br,0,TAU);}
+    }
   }
+  ctx.lineWidth=2.2;ctx.strokeStyle="#021926";
+  for(let k=0;k<NB;k++){ctx.globalAlpha=(k+0.5)/NB*0.6*0.55;ctx.stroke(dark[k]);}
+  ctx.lineWidth=1.8;ctx.strokeStyle="#d4eeee";
+  for(let k=0;k<NB;k++){ctx.globalAlpha=(k+0.5)/NB*0.6;ctx.stroke(lit[k]);}
+  ctx.globalAlpha=0.6;ctx.strokeStyle="#f2fbfa";ctx.lineWidth=2.6;ctx.stroke(caps);
+  ctx.globalAlpha=0.45;ctx.fillStyle="#f2fbfa";ctx.fill(foam);
   ctx.globalAlpha=1;
+  if(GQ>0)drawGlitter(x0+80,y0+80,x1-80,y1-80,windK);
 }
-
+// Sun glitter: tiny twinkling highlights where wave faces catch the sun, densest towards the
+// glare in the top-left of the view.
+function drawGlitter(x0,y0,x1,y1,windK){
+  const gc=26,z=S.zoom;
+  const sx=S.cam.x+(W*0.12-W/2)/z,sy=S.cam.y+(-H*0.2-H/2)/z,gr=Math.hypot(W,H)/z*0.95;
+  ctx.globalCompositeOperation="lighter";ctx.fillStyle="#fff6e0";
+  for(let i=Math.floor(x0/gc);i<=Math.ceil(x1/gc);i++)for(let j=Math.floor(y0/gc);j<=Math.ceil(y1/gc);j++){
+    const h=hash(i+17,j+29);
+    const tw=Math.sin(S.t*(2.2+h*4.5)+h*60);if(tw<0.86)continue;
+    const px=i*gc+hash2(i,j+3)*gc,py=j*gc+hash(j+11,i)*gc;
+    const near=Math.max(0,1-Math.hypot(px-sx,py-sy)/gr);
+    const a=(tw-0.86)*7*near*near*near*windK;if(a<0.05)continue;
+    const s=1+3*a;
+    ctx.globalAlpha=Math.min(0.9,a);
+    ctx.fillRect(px-s*1.8,py-0.6,s*3.6,1.2);if(a>0.45)ctx.fillRect(px-0.5,py-s*0.9,1,s*1.8);
+  }
+  ctx.globalAlpha=1;ctx.globalCompositeOperation="source-over";
+}
 // ════════════════════════════════════════════════════════════════════
 // RENDERING: 3D PROJECTION HELPERS
 // ════════════════════════════════════════════════════════════════════
@@ -1291,8 +1406,9 @@ function drawFixedRefs(){
     ctx.strokeStyle="rgba(0,10,20,0.28)";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+SUN.x*15,y+SUN.y*15);ctx.stroke();
     limb({x,y,z:bz},{x,y,z:bz+14},1.5,"#2a3236");
     const fp=toView({x,y,z:bz+14});ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(fp[0],fp[1]);ctx.lineTo(fp[0]+6,fp[1]+2);ctx.lineTo(fp[0],fp[1]+4.5);ctx.closePath();ctx.fill();
-    const bp=toView({x,y,z:bz});ctx.fillStyle=col;ctx.beginPath();ctx.arc(bp[0],bp[1],4.5,0,TAU);ctx.fill();
-    ctx.fillStyle="rgba(255,255,255,0.4)";ctx.beginPath();ctx.arc(bp[0]-1.5,bp[1]-1.5,1.5,0,TAU);ctx.fill();
+    const bp=toView({x,y,z:bz}),cc=col.match(/\w\w/g).map(v=>parseInt(v,16));
+    const sg=ctx.createRadialGradient(bp[0]-1.6,bp[1]-1.8,0.4,bp[0],bp[1],4.8);sg.addColorStop(0,rgb(cc,1.3));sg.addColorStop(0.5,col);sg.addColorStop(1,rgb(cc,0.55));
+    ctx.fillStyle=sg;ctx.beginPath();ctx.arc(bp[0],bp[1],4.5,0,TAU);ctx.fill();
   }
 }
 // Kelp beds live on a fixed grid of cells; ~35% of cells hold one.
@@ -1370,7 +1486,7 @@ function rockPts(x,y,r,seed,n=9){
   return pts;
 }
 // an extruded, tapering block: sides facing the camera are shaded by the sun, then the top
-function drawPrism(base,cx,cy,z0,h,taper,side,top,shadow=true){
+function drawPrism(base,cx,cy,z0,h,taper,side,top,shadow=true,rim){
   const bot=base.map(p=>({x:p.x,y:p.y,z:z0}));
   const tp=base.map(p=>({x:cx+(p.x-cx)*taper,y:cy+(p.y-cy)*taper,z:z0+h}));
   if(shadow){
@@ -1386,57 +1502,173 @@ function drawPrism(base,cx,cy,z0,h,taper,side,top,shadow=true){
     if(dot3(nv,CAMV)<=0)continue;
     ctx.fillStyle=rgb(side,0.55+0.5*Math.max(0,dot3(nv,LIGHTV)));poly(quad,toView);ctx.fill();
   }
-  ctx.fillStyle=rgb(top,1);poly(tp,toView);ctx.fill();
+  ctx.fillStyle=typeof top==="function"?top(tp):rgb(top,1);poly(tp,toView);ctx.fill();
+  if(rim){ // a thin sunlit edge along the upper-left of the top face
+    ctx.strokeStyle=rim;ctx.lineWidth=1.2;ctx.lineJoin="round";ctx.beginPath();
+    for(let i=0;i<n;i++){const j=(i+1)%n,ex=tp[j].x-tp[i].x,ey=tp[j].y-tp[i].y;
+      if(ey*-0.55-ex*-0.5<0)continue;                       // edge whose outward side faces the sun
+      const a=toView(tp[i]),c=toView(tp[j]);ctx.moveTo(a[0],a[1]);ctx.lineTo(c[0],c[1]);}
+    ctx.stroke();
+  }
+  return tp;
+}
+// a top-face fill that is brighter towards the sun (upper left) and darker away from it
+function sunGrad(tp,c,lo=0.82,hi=1.16){
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for(const p of tp){const q=toView(p);x0=Math.min(x0,q[0]);y0=Math.min(y0,q[1]);x1=Math.max(x1,q[0]);y1=Math.max(y1,q[1]);}
+  const g=ctx.createLinearGradient(x0,y0,x1,y1);g.addColorStop(0,rgb(c,hi));g.addColorStop(1,rgb(c,lo));return g;
 }
 function drawRock(o){
-  const t=S.t;
-  ctx.strokeStyle="rgba(230,245,242,"+(0.35+0.15*Math.sin(t*2+o.seed)).toFixed(2)+")";ctx.lineWidth=3;
-  ctx.beginPath();rockPts(o.x,o.y,o.r+7,o.seed+1).forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.stroke();
-  const h=clamp(o.r*0.55,7,28);
-  drawPrism(rockPts(o.x,o.y,o.r,o.seed),o.x+o.r*0.08,o.y-o.r*0.05,0,h,0.55,[86,90,82],[112,116,104]);
+  const h=clamp(o.r*0.55,7,28),top=[112,116,104];
+  const tp=drawPrism(rockPts(o.x,o.y,o.r,o.seed),o.x+o.r*0.08,o.y-o.r*0.05,0,h,0.55,[86,90,82],t=>sunGrad(t,top),true,"rgba(200,205,190,0.55)");
   // a second, smaller boulder on top of bigger rocks
-  if(o.r>30)drawPrism(rockPts(o.x-o.r*0.2,o.y+o.r*0.1,o.r*0.35,o.seed+9,7),o.x-o.r*0.2,o.y+o.r*0.1,h*0.75,h*0.5,0.5,[96,100,92],[124,128,116],false);
+  let peak=tp;
+  if(o.r>30)peak=drawPrism(rockPts(o.x-o.r*0.2,o.y+o.r*0.1,o.r*0.35,o.seed+9,7),o.x-o.r*0.2,o.y+o.r*0.1,h*0.75,h*0.5,0.5,[96,100,92],t=>sunGrad(t,[124,128,116]),false,"rgba(210,214,200,0.6)");
+  // cracks, lichen and bird droppings on the top
+  const c=toView({x:o.x+o.r*0.08,y:o.y-o.r*0.05,z:h});
+  ctx.strokeStyle="rgba(50,54,48,0.45)";ctx.lineWidth=1;ctx.beginPath();
+  ctx.moveTo(c[0]-o.r*0.25,c[1]-o.r*0.05);ctx.lineTo(c[0]-o.r*0.02,c[1]+o.r*0.04);ctx.lineTo(c[0]+o.r*0.2,c[1]-o.r*0.08);ctx.stroke();
+  for(let k=0;k<5;k++){
+    const a=hash(o.seed,k+40)*TAU,d=hash2(o.seed,k+41)*o.r*0.3,x=c[0]+Math.cos(a)*d,y=c[1]+Math.sin(a)*d*0.8;
+    ctx.fillStyle=k<3?"rgba(196,176,92,0.55)":"rgba(240,240,230,0.7)";
+    ctx.beginPath();ctx.arc(x,y,k<3?1.6+hash(k,o.seed)*2:1.1,0,TAU);ctx.fill();
+  }
 }
 function drawIsland(o){
-  ctx.fillStyle="rgba(120,200,190,0.22)";ctx.beginPath();ctx.arc(o.x,o.y,o.r+38,0,TAU);ctx.fill();
-  drawPrism(rockPts(o.x,o.y,o.r+6,o.seed,14),o.x,o.y,0,3,0.97,[176,156,108],[222,201,146]);
+  const sand=[222,201,146];
+  const beach=drawPrism(rockPts(o.x,o.y,o.r+6,o.seed,14),o.x,o.y,0,3,0.97,[176,156,108],tp=>{
+    const c=toView({x:o.x,y:o.y,z:3}),g=ctx.createRadialGradient(c[0]-20,c[1]-20,o.r*0.6,c[0],c[1],o.r+8);
+    g.addColorStop(0,rgb(sand,1.08));g.addColorStop(0.8,rgb(sand,1));g.addColorStop(1,rgb(sand,0.8));return g;});
   const px=o.x+8,py=o.y-4,pr=o.r-26,hx=o.x-30,hy=o.y+20,hr=o.r*0.4;
-  drawPrism(rockPts(px,py,pr,o.seed+3,14),px,py,3,9,0.92,[128,110,74],[86,142,78],false);
-  drawPrism(rockPts(hx,hy,hr,o.seed+5,11),hx,hy,12,9,0.72,[104,104,66],[70,126,70],false);
-  // trees, drawn back to front
-  const trees=[];
+  // driftwood and pebbles on the beach
+  for(let k=0;k<10;k++){const a=hash(o.seed,k+60)*TAU,d=o.r-12+hash2(k,o.seed)*10,q=toView({x:o.x+Math.cos(a)*d,y:o.y+Math.sin(a)*d,z:3});
+    ctx.fillStyle=k%3?"rgba(150,140,120,0.7)":"rgba(120,92,60,0.8)";ctx.beginPath();ctx.ellipse(q[0],q[1],k%3?1.8:4,1.4,a,0,TAU);ctx.fill();}
+  const grass=[86,142,78],hill=[70,126,70];
+  drawPrism(rockPts(px,py,pr,o.seed+3,14),px,py,3,9,0.92,[128,110,74],t=>sunGrad(t,grass,0.86,1.12),false,"rgba(170,210,140,0.5)");
+  drawPrism(rockPts(hx,hy,hr,o.seed+5,11),hx,hy,12,9,0.72,[104,104,66],t=>sunGrad(t,hill,0.84,1.14),false,"rgba(160,205,130,0.5)");
+  // grass tufts
+  ctx.strokeStyle="rgba(40,90,40,0.5)";ctx.lineWidth=1;ctx.beginPath();
+  for(let k=0;k<40;k++){const a=hash(o.seed+k,71)*TAU,d=Math.sqrt(hash(k,o.seed+72))*(pr-10),x=px+Math.cos(a)*d,y=py+Math.sin(a)*d;
+    const z=Math.hypot(x-hx,y-hy)<hr*0.6?21:12,q=toView({x,y,z});ctx.moveTo(q[0]-1.5,q[1]);ctx.lineTo(q[0],q[1]-3);ctx.lineTo(q[0]+1.5,q[1]);}
+  ctx.stroke();
+  // trees and the lighthouse, drawn back to front
+  const things=[];
   for(let k=0;k<14;k++){
     const a=hash(o.seed+k,31)*TAU,d=Math.sqrt(hash(k,o.seed+7))*(pr-22);
     const x=px+Math.cos(a)*d,y=py+Math.sin(a)*d,onHill=Math.hypot(x-hx,y-hy)<hr*0.6;
-    trees.push({x,y,g:onHill?21:12,r:7+hash(k,5)*5});
+    if(Math.hypot(x-hx,y-hy)<16)continue;                 // leave room for the lighthouse
+    things.push({x,y,g:onHill?21:12,r:7+hash(k,5)*5,k});
   }
-  trees.sort((p,q)=>p.y-q.y);
-  for(const tr of trees){
+  things.push({x:hx,y:hy,g:21,light:true});
+  things.sort((p,q)=>p.y-q.y);
+  for(const tr of things){
+    if(tr.light){drawLighthouse(tr.x,tr.y,tr.g);continue;}
     const top=tr.g+12+tr.r*0.4;
     const sp=toView({x:tr.x+SUN.x*(top-tr.g),y:tr.y+SUN.y*(top-tr.g),z:tr.g});
-    ctx.fillStyle="rgba(0,20,10,0.25)";ctx.beginPath();ctx.ellipse(sp[0],sp[1],tr.r,tr.r*0.65,0,0,TAU);ctx.fill();
+    ctx.fillStyle="rgba(0,20,10,0.28)";ctx.beginPath();ctx.ellipse(sp[0],sp[1],tr.r*1.05,tr.r*0.7,0.5,0,TAU);ctx.fill();
     limb({x:tr.x,y:tr.y,z:tr.g},{x:tr.x,y:tr.y,z:top-tr.r*0.5},2.6,"#6b4b2a");
-    const c=toView({x:tr.x,y:tr.y,z:top});
-    ctx.fillStyle="#2f6a3a";ctx.beginPath();ctx.arc(c[0],c[1],tr.r,0,TAU);ctx.fill();
-    ctx.fillStyle="#4d8f4c";ctx.beginPath();ctx.arc(c[0]-tr.r*0.3,c[1]-tr.r*0.3,tr.r*0.6,0,TAU);ctx.fill();
+    const c=toView({x:tr.x,y:tr.y,z:top}),r=tr.r;
+    // a clump of leafy blobs, shaded from dark underneath to sunlit on top
+    const g=ctx.createRadialGradient(c[0]-r*0.45,c[1]-r*0.5,r*0.1,c[0],c[1],r*1.25);
+    g.addColorStop(0,"#7fbf62");g.addColorStop(0.45,"#3f8044");g.addColorStop(1,"#1f4d2c");
+    ctx.fillStyle=g;ctx.beginPath();
+    for(let b=0;b<5;b++){const a=b/5*TAU+tr.k,bx=c[0]+Math.cos(a)*r*0.45,by=c[1]+Math.sin(a)*r*0.4;ctx.moveTo(bx+r*0.62,by);ctx.arc(bx,by,r*0.62,0,TAU);}
+    ctx.fill();
+  }
+}
+// upright cylinder or tapering tower, shaded so the side towards the sun is bright
+function drawCylinder(x,y,z0,z1,r0,r1,c,cap){
+  const b=toView({x,y,z:z0}),t=toView({x,y,z:z1});
+  const ax=t[0]-b[0],ay=t[1]-b[1],al=Math.hypot(ax,ay)||1,px=-ay/al,py=ax/al;
+  const g=ctx.createLinearGradient(b[0]-px*r0,b[1]-py*r0,b[0]+px*r0,b[1]+py*r0);
+  g.addColorStop(0,rgb(c,0.95));g.addColorStop(0.3,rgb(c,1.18));g.addColorStop(0.65,rgb(c,0.85));g.addColorStop(1,rgb(c,0.55));
+  ctx.fillStyle=g;ctx.beginPath();
+  ctx.moveTo(b[0]-px*r0,b[1]-py*r0);ctx.lineTo(t[0]-px*r1,t[1]-py*r1);ctx.lineTo(t[0]+px*r1,t[1]+py*r1);ctx.lineTo(b[0]+px*r0,b[1]+py*r0);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.arc(b[0],b[1],r0,0,TAU);ctx.fill();
+  if(cap){ctx.fillStyle=cap===true?rgb(c,1.08):cap;ctx.beginPath();ctx.arc(t[0],t[1],r1,0,TAU);ctx.fill();}
+  return t;
+}
+function drawLighthouse(x,y,z0){
+  const H=46;
+  // long shadow across the hill
+  ctx.strokeStyle="rgba(0,20,10,0.3)";ctx.lineWidth=9;ctx.lineCap="round";
+  const s0=toView({x,y,z:z0}),s1=toView({x:x+SUN.x*H,y:y+SUN.y*H,z:z0});ctx.beginPath();ctx.moveTo(s0[0],s0[1]);ctx.lineTo(s1[0],s1[1]);ctx.stroke();
+  drawCylinder(x,y,z0,z0+3,9,9,[200,196,186],true);               // base
+  const W2=[244,242,236],R2=[204,54,46];
+  for(let k=0;k<4;k++){const za=z0+3+k*9,zb=za+9,ra=6.5-k*0.55,rb=6.5-(k+1)*0.55;drawCylinder(x,y,za,zb,ra,rb,k%2?R2:W2,k===3);}
+  const gz=z0+39;
+  drawCylinder(x,y,gz,gz+1.2,6,6,[40,46,50],true);                // gallery
+  drawCylinder(x,y,gz+1.2,gz+6,3.6,3.6,[230,240,200],false);       // lantern glass
+  const lt=toView({x,y,z:gz+3.5}),pulse=0.55+0.45*Math.sin(S.t*1.6);
+  const g=ctx.createRadialGradient(lt[0],lt[1],0,lt[0],lt[1],16);
+  g.addColorStop(0,"rgba(255,244,190,"+(0.9*pulse).toFixed(2)+")");g.addColorStop(1,"rgba(255,244,190,0)");
+  ctx.globalCompositeOperation="lighter";ctx.fillStyle=g;ctx.beginPath();ctx.arc(lt[0],lt[1],16,0,TAU);ctx.fill();ctx.globalCompositeOperation="source-over";
+  drawCylinder(x,y,gz+6,gz+9,4.2,0.6,[40,46,50],false);            // roof
+}
+// Shallow water round islands and rocks, drawn flat on the sea before anything stands up out of it:
+// turquoise shallows with dancing caustics, and surf breaking on the shore.
+function drawShallows(){
+  const {x0,y0,x1,y1}=viewRect(140),cau=pat("cau",TEX_CAUSTIC),t=S.t;
+  for(const o of S.obstacles){
+    const isl=o.kind==="island";if(!isl&&o.kind!=="rock")continue;
+    const R=isl?o.r+100:o.r+34;
+    if(o.x+R<x0||o.x-R>x1||o.y+R<y0||o.y-R>y1)continue;
+    const g=ctx.createRadialGradient(o.x,o.y,isl?o.r:o.r*0.6,o.x,o.y,R);
+    g.addColorStop(0,"rgba(118,214,196,"+(isl?0.6:0.45)+")");g.addColorStop(0.4,"rgba(70,172,172,0.3)");g.addColorStop(1,"rgba(40,130,150,0)");
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(o.x,o.y,R,0,TAU);ctx.fill();
+    if(GQ>0)for(const rr of isl?(GQ>1?[0.5,0.68,0.85]:[0.7]):[0.8]){           // nested clips fade the caustics out towards deeper water
+      const cr=R*rr;
+      ctx.save();ctx.beginPath();ctx.arc(o.x,o.y,cr,0,TAU);ctx.clip();
+      patFill(cau,1.15,t*7%147.2,t*4%147.2,o.x-cr,o.y-cr,cr*2,cr*2,isl?0.11:0.2,"lighter");
+      if(isl&&GQ>1)patFill(cau,1.7,-t*5%217.6,t*6%217.6,o.x-cr,o.y-cr,cr*2,cr*2,0.08,"lighter");
+      ctx.restore();
+    }
+    // surf: waves roll in and break on the shore, leaving a band of foam that comes and goes
+    const shore=isl?rockPts(o.x,o.y,o.r+6,o.seed,14):rockPts(o.x,o.y,o.r,o.seed);
+    const ring=(ext)=>{ // the shore pushed out by ext, smoothed into curves through the edge midpoints
+      const q=shore.map(p=>{const dx=p.x-o.x,dy=p.y-o.y,d=Math.hypot(dx,dy)||1,k=(d+ext)/d;return [o.x+dx*k,o.y+dy*k];});
+      const n=q.length,mid=i=>{const a=q[i%n],c=q[(i+1)%n];return [(a[0]+c[0])/2,(a[1]+c[1])/2];};
+      ctx.beginPath();let m=mid(0);ctx.moveTo(m[0],m[1]);
+      for(let i=1;i<=n;i++){const c=q[i%n];m=mid(i);ctx.quadraticCurveTo(c[0],c[1],m[0],m[1]);}
+      ctx.closePath();};
+    ctx.lineJoin="round";
+    for(let w=0;w<2;w++){
+      const ph=((t/(isl?3.4:2.6)+w*0.5+o.seed*0.13)%1);
+      const ext=isl?(1-ph)*30:2+ph*20;                         // islands: waves come in; rocks: surge washes out
+      ctx.strokeStyle="rgba(240,250,248,"+(isl?Math.sin(ph*Math.PI)*0.35:(1-ph)*0.32).toFixed(3)+")";
+      ctx.lineWidth=isl?1.5+ph*2.5:2.5-ph*1.5;ring(ext);ctx.stroke();
+    }
+    ctx.strokeStyle="rgba(240,250,248,"+(0.42+0.12*Math.sin(t*2+o.seed)).toFixed(3)+")";ctx.lineWidth=isl?3.5:2.5;
+    ctx.setLineDash([9,5,3,6]);ctx.lineDashOffset=t*6;ring(isl?1:3);ctx.stroke();ctx.setLineDash([]);
+    ctx.strokeStyle="rgba(240,250,248,0.14)";ctx.lineWidth=isl?12:8;ring(isl?5:6);ctx.stroke();
   }
 }
 // a buoy: a short floating cylinder with an optional flag pole on top
 function drawBuoy3D(x,y,r,h,col,label,flag){
   const bob=Math.sin(S.t*2.2+x*0.01)*1.2,z0=bob*0.6;
-  ctx.fillStyle="rgba(230,245,242,0.22)";ctx.beginPath();ctx.arc(x,y,r+6+bob,0,TAU);ctx.fill();
-  ctx.strokeStyle="rgba(0,12,22,0.25)";ctx.lineWidth=r*2;ctx.lineCap="round";
-  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+SUN.x*h,y+SUN.y*h);ctx.stroke();
-  const b0=toView({x,y,z:z0}),t0=toView({x,y,z:z0+h});
   const c=col.match(/\w\w/g).map(v=>parseInt(v,16));
-  ctx.strokeStyle=rgb(c,0.72);ctx.lineWidth=r*2;ctx.beginPath();ctx.moveTo(b0[0],b0[1]);ctx.lineTo(t0[0],t0[1]);ctx.stroke();
-  ctx.fillStyle=col;ctx.beginPath();ctx.arc(t0[0],t0[1],r,0,TAU);ctx.fill();
-  ctx.fillStyle="rgba(255,255,255,0.4)";ctx.beginPath();ctx.arc(t0[0]-r*0.35,t0[1]-r*0.35,r*0.32,0,TAU);ctx.fill();
+  // ripples spreading out from where it bobs, and its shimmering reflection
+  for(let k=0;k<2;k++){const ph=(S.t*0.45+k*0.5+x*0.001)%1;
+    ctx.strokeStyle="rgba(230,245,242,"+((1-ph)*0.35).toFixed(3)+")";ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(x,y,r+3+ph*16,0,TAU);ctx.stroke();}
+  const rf=toView({x,y,z:-h*0.55});
+  ctx.fillStyle=rgb(c,0.8);ctx.globalAlpha=0.22;ctx.beginPath();ctx.ellipse(rf[0]+Math.sin(S.t*3+x)*1.2,rf[1],r*0.9,h*0.4,0,0,TAU);ctx.fill();ctx.globalAlpha=1;
+  ctx.fillStyle="rgba(230,245,242,0.3)";ctx.beginPath();ctx.arc(x,y,r+2.5,0,TAU);ctx.fill();
+  // shadow
+  ctx.strokeStyle="rgba(0,12,22,0.28)";ctx.lineWidth=r*2;ctx.lineCap="round";
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+SUN.x*h,y+SUN.y*h);ctx.stroke();
+  drawCylinder(x,y,z0,z0+h,r,r,c,false);
+  if(label)drawCylinder(x,y,z0+h*0.55,z0+h*0.8,r+0.2,r+0.2,[244,242,232],false);
+  const t0=toView({x,y,z:z0+h});
+  const tg=ctx.createRadialGradient(t0[0]-r*0.4,t0[1]-r*0.4,r*0.1,t0[0],t0[1],r);
+  tg.addColorStop(0,rgb(c,1.25));tg.addColorStop(1,rgb(c,0.92));
+  ctx.fillStyle=tg;ctx.beginPath();ctx.arc(t0[0],t0[1],r,0,TAU);ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,0.45)";ctx.beginPath();ctx.ellipse(t0[0]-r*0.35,t0[1]-r*0.4,r*0.35,r*0.2,-0.6,0,TAU);ctx.fill();
   if(flag){
     const tz=z0+h+16,pt=toView({x,y,z:tz});
     limb({x,y,z:z0+h},{x,y,z:tz},1.6,"#2a3236");
-    const tx=-Math.sin(S.wind.from),ty=Math.cos(S.wind.from),w=Math.sin(S.t*9+x)*1.5;
-    ctx.fillStyle=flag;ctx.beginPath();ctx.moveTo(pt[0],pt[1]);ctx.lineTo(pt[0]+tx*14+w,pt[1]+ty*14+3);ctx.lineTo(pt[0],pt[1]+7);ctx.closePath();ctx.fill();
+    const tx=-Math.sin(S.wind.from),ty=Math.cos(S.wind.from),w=Math.sin(S.t*9+x)*1.5,w2=Math.sin(S.t*9+x+1.4)*1.5;
+    ctx.fillStyle=flag;ctx.beginPath();ctx.moveTo(pt[0],pt[1]);
+    ctx.quadraticCurveTo(pt[0]+tx*7+w,pt[1]+ty*7+1+w2,pt[0]+tx*14+w2,pt[1]+ty*14+3);ctx.lineTo(pt[0],pt[1]+7);ctx.closePath();ctx.fill();
   }
   if(label){ctx.fillStyle="#1d1503";ctx.font="700 "+Math.round(r*1.1)+"px 'JetBrains Mono',monospace";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(label,t0[0],t0[1]+1);}
 }
@@ -1491,6 +1723,11 @@ function drawCourse(){
   // start / finish line
   ctx.save();
   const active=!r.started||r.next>=MARKS.length;
+  if(active){ctx.strokeStyle="rgba(255,212,71,"+(0.12+0.05*Math.sin(S.t*3)).toFixed(3)+")";ctx.lineWidth=12;ctx.lineCap="round";
+    ctx.beginPath();ctx.moveTo(LINE.x1,LINE.y);ctx.lineTo(LINE.x2,LINE.y);ctx.stroke();}
+  // little floats along the line
+  ctx.fillStyle=active?"rgba(255,230,150,0.9)":"rgba(230,245,242,0.4)";
+  for(let x=LINE.x1+24;x<LINE.x2-10;x+=24){ctx.beginPath();ctx.arc(x,LINE.y+Math.sin(S.t*2+x*0.05)*0.6,1.6,0,TAU);ctx.fill();}
   ctx.strokeStyle=active?"rgba(255,212,71,0.9)":"rgba(230,245,242,0.35)";ctx.lineWidth=2.5;ctx.setLineDash([14,10]);
   ctx.beginPath();ctx.moveTo(LINE.x1,LINE.y);ctx.lineTo(LINE.x2,LINE.y);ctx.stroke();ctx.restore();
   if(active){
@@ -1515,6 +1752,8 @@ function drawRoundingGuide(m){
   ctx.beginPath();ctx.moveTo(m.x+gx*24,m.y+gy*24);ctx.lineTo(m.x+gx*ROUND_R,m.y+gy*ROUND_R);ctx.stroke();ctx.setLineDash([]);
   // arrow body with dashes flowing in the direction of travel
   ctx.lineCap="round";
+  ctx.strokeStyle="rgba(255,212,71,"+(0.10+0.06*Math.sin(S.t*3)).toFixed(3)+")";ctx.lineWidth=18;
+  ctx.beginPath();ctx.arc(m.x,m.y,RA,a0,a1,true);ctx.stroke();
   ctx.strokeStyle="rgba(8,30,40,0.55)";ctx.lineWidth=8;
   ctx.beginPath();ctx.arc(m.x,m.y,RA,a0,a1,true);ctx.stroke();
   ctx.strokeStyle="#ffd447";ctx.lineWidth=4;ctx.setLineDash([14,9]);ctx.lineDashOffset=-S.t*28;
@@ -1536,20 +1775,88 @@ function drawRoundingGuide(m){
 // ════════════════════════════════════════════════════════════════════
 function drawTrail(){
   const tr=S.trail;if(tr.length<2)return;
-  ctx.lineCap="round";
   // long breadcrumb track: stays where the boat has been
-  ctx.fillStyle="rgba(232,246,244,0.45)";
-  for(let i=0;i<tr.length;i+=3){const p=tr[i];ctx.globalAlpha=0.2+0.6*(i/tr.length);ctx.beginPath();ctx.arc(p.x,p.y,1.8,0,TAU);ctx.fill();}
-  // fresh foam wake
-  const n=Math.min(tr.length,90),s0=tr.length-n;
-  for(let i=s0+1;i<tr.length;i++){
-    const a=tr[i-1],b=tr[i],k=(i-s0)/n;
-    const w=4+Math.min(14,b.s*0.12)*(1-k)+2;
-    ctx.globalAlpha=k*0.35*Math.min(1,b.s/25);
-    ctx.strokeStyle="#e8f6f4";ctx.lineWidth=w;
-    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
-  }
+  ctx.fillStyle="rgba(232,246,244,0.4)";
+  for(let i=0;i<tr.length;i+=3){const p=tr[i];ctx.globalAlpha=0.15+0.5*(i/tr.length);ctx.beginPath();ctx.arc(p.x,p.y,1.6,0,TAU);ctx.fill();}
   ctx.globalAlpha=1;
+}
+// Every moving boat leaves a wake. Recent positions are sampled; from each one the two arms of a
+// Kelvin wake spread out at about 19° either side of the track, with churned foam down the middle.
+const WAKE_LIFE=2.6;
+function wakeBoats(){return S.mode==="race"?[S.boat,...S.ais.map(a=>a.b)]:[S.boat];}
+function sampleWakes(){
+  for(const b of wakeBoats()){
+    const w=b.wk||(b.wk=[]);
+    while(w.length&&(S.t-w[0].t>WAKE_LIFE||w[0].t>S.t))w.shift();
+    if(!w.length||S.t-w[w.length-1].t>0.06)w.push({x:b.x,y:b.y,h:b.h,s:b.capsized?0:Math.abs(b.u),t:S.t,sd:Math.random()*99});
+  }
+}
+function drawWakes(){
+  const {x0,y0,x1,y1}=viewRect(200);
+  ctx.lineCap="round";
+  for(const b of wakeBoats()){
+    const w=b.wk;if(!w||w.length<2||b.x<x0||b.x>x1||b.y<y0||b.y>y1)continue;
+    const sc=b.scale||1,pts=w.concat([{x:b.x,y:b.y,h:b.h,s:b.capsized?0:Math.abs(b.u),t:S.t,sd:0}]);
+    const L=[],R=[];
+    for(const p of pts){
+      const age=S.t-p.t,fx=Math.sin(p.h),fy=-Math.cos(p.h),rx=-fy,ry=fx;
+      const sx=p.x-fx*20*sc,sy=p.y-fy*20*sc,d=5*sc+age*p.s*0.34;
+      const k=age<0?0:clamp(p.s/70,0,1)*clamp(1-age/WAKE_LIFE,0,1);
+      L.push([sx-rx*d,sy-ry*d,age,k,sx,sy,p.sd]);R.push([sx+rx*d,sy+ry*d,age,k,sx,sy,p.sd]);
+    }
+    // soft swell under each arm, then the bright breaking line on top (flat ends, so segments don't bead)
+    ctx.lineCap="butt";
+    for(const arm of [L,R])for(let i=1;i<arm.length;i++){
+      const a=arm[i-1],c=arm[i],k=c[3];if(k<0.02)continue;
+      ctx.strokeStyle="rgba(200,238,238,"+(0.10*k).toFixed(3)+")";ctx.lineWidth=5+c[2]*5;
+      ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(c[0],c[1]);ctx.stroke();
+      ctx.strokeStyle="rgba(238,250,248,"+(0.5*k).toFixed(3)+")";ctx.lineWidth=1+c[2]*1.1;
+      ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(c[0],c[1]);ctx.stroke();
+    }
+    // curved transverse waves between the arms
+    ctx.lineCap="round";ctx.lineWidth=1.2;
+    for(let i=1;i<L.length-1;i+=3){
+      const l=L[i],r=R[i],k=l[3];if(k<0.05)continue;
+      ctx.strokeStyle="rgba(225,245,244,"+(0.16*k).toFixed(3)+")";
+      const fx=(l[4]-L[i+1][4]),fy=(l[5]-L[i+1][5]);
+      ctx.beginPath();ctx.moveTo(l[0],l[1]);ctx.quadraticCurveTo(l[4]+fx*2,l[5]+fy*2,r[0],r[1]);ctx.stroke();
+    }
+    // churned foam in the middle, spreading and fading
+    ctx.fillStyle="#eef9f7";
+    for(const p of L){
+      const age=p[2],k=p[3]*Math.max(0,1-age/1.8);if(k<0.04)continue;
+      for(let m=0;m<3;m++){
+        const j=hash(p[6],m)-0.5,jj=hash2(m,p[6])-0.5,spread=2+age*9*sc;
+        ctx.globalAlpha=0.4*k;ctx.beginPath();ctx.arc(p[4]+j*spread*2,p[5]+jj*spread*2,1+age*1.8+hash(m,p[6]+1)*1.5,0,TAU);ctx.fill();
+      }
+    }
+    ctx.globalAlpha=1;
+  }
+}
+// spray thrown up from the bow when punching upwind in a breeze; it blows back across the boat
+function sprayFrom(b,F,dt){
+  if(!F||b.capsized||b.moored)return;
+  // only boats going really fast, with the wind forward of about 125° (not running)
+  // (true wind read here directly: the computer boats' force results don't carry it)
+  const kn=b.u/PX_PER_KN,tws=windAt(b.x,b.y).speed/PX_PER_KN,up=Math.abs(F.awa)<2.2;
+  const rate=up?3.5*clamp((kn-6)/2.5,0,1)*clamp((tws-9)/7,0,1):0;
+  if(!(rate>0)||Math.random()>rate*dt)return;
+  const P=boatFrame(b),sd=b.heel>0?-1:1,p=P(18,sd*6,3);
+  const dirTo=S.wind.from+Math.PI,wx=Math.sin(dirTo),wy=-Math.cos(dirTo),fx=Math.sin(b.h),fy=-Math.cos(b.h),rx=Math.cos(b.h),ry=Math.sin(b.h);
+  for(let n=0;n<3+Math.random()*4;n++){
+    const v=25+Math.random()*35;
+    S.fx.push({k:"drop",x:p.x,y:p.y,z:p.z,vx:fx*b.u*0.5+rx*sd*v*0.6+wx*30+(Math.random()-0.5)*20,vy:fy*b.u*0.5+ry*sd*v*0.6+wy*30+(Math.random()-0.5)*20,vz:45+Math.random()*45,life:1.2,spray:1});
+  }
+}
+// While swiping: a faint double arrow across the boat shows the axis the swipe works along
+function drawSwipeAxis(){
+  const b=S.boat,age=S.t-(S.swipeT??-9);if(age<0||age>0.9||b.capsized)return;
+  const a=1-age/0.9,rx=Math.cos(b.h),ry=Math.sin(b.h),L=46,c=toView({x:b.x,y:b.y,z:6});
+  ctx.save();ctx.globalAlpha=0.75*a;ctx.strokeStyle="#ffd447";ctx.fillStyle="#ffd447";ctx.lineWidth=2;ctx.lineCap="round";
+  ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(c[0]-rx*L,c[1]-ry*L);ctx.lineTo(c[0]+rx*L,c[1]+ry*L);ctx.stroke();ctx.setLineDash([]);
+  for(const sg of [1,-1]){const hx=c[0]+rx*L*sg,hy=c[1]+ry*L*sg,big=sg===S.swipeDir?1.4:1;
+    ctx.beginPath();ctx.moveTo(hx+rx*sg*8*big,hy+ry*sg*8*big);ctx.lineTo(hx-ry*5*big,hy+rx*5*big);ctx.lineTo(hx+ry*5*big,hy-rx*5*big);ctx.closePath();ctx.fill();}
+  ctx.restore();
 }
 // Dotted line ahead of the boat: where it will be in the next 3 seconds (shows drift sideways too)
 function drawMotion(){
@@ -1564,14 +1871,19 @@ function drawMotion(){
 // ════════════════════════════════════════════════════════════════════
 // RENDERING: BOATS AND SAILORS
 // ════════════════════════════════════════════════════════════════════
-const PLAYER_LOOK={stripe:"#ff7b30",sail:"rgba(255,255,255,0.9)",shirt:"#d23b31"};
+const PLAYER_LOOK={stripe:"#ff7b30",sail:"rgba(255,255,255,0.9)",shirt:"#d23b31",top:"#22364a",skin:"#e8bd94",hat:"#f2efe6",legs:"#2a3a4a"};
 function drawBoat(b=S.boat,F=S.F){
   // bow wave
   const sp=Math.abs(b.u);
   if(sp>8&&!b.capsized){
-    ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.h);const L=46;
-    ctx.strokeStyle="rgba(235,248,246,"+Math.min(0.6,sp/120).toFixed(2)+")";ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(-10-sp*0.06,-6);ctx.quadraticCurveTo(-5,-L/2+2,0,-L/2-2);ctx.quadraticCurveTo(5,-L/2+2,10+sp*0.06,-6);ctx.stroke();
+    // bow wave: a curl of foam peeling off each side of the bow, bigger with speed
+    ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.h);const sc=b.scale||1;ctx.scale(sc,sc);const L=46,k=Math.min(1,sp/110);
+    ctx.fillStyle="rgba(238,250,248,"+(0.5*k).toFixed(2)+")";
+    ctx.beginPath();ctx.moveTo(0,-L/2-3);
+    ctx.quadraticCurveTo(7+k*6,-L/2+4,11+sp*0.08,-4);ctx.quadraticCurveTo(6,-L/2+8,0,-L/2+2);
+    ctx.quadraticCurveTo(-6,-L/2+8,-11-sp*0.08,-4);ctx.quadraticCurveTo(-7-k*6,-L/2+4,0,-L/2-3);ctx.fill();
+    ctx.strokeStyle="rgba(245,252,250,"+(0.7*k).toFixed(2)+")";ctx.lineWidth=1.6;
+    ctx.beginPath();ctx.moveTo(-12-sp*0.08,-2);ctx.quadraticCurveTo(-6,-L/2+3,0,-L/2-3);ctx.quadraticCurveTo(6,-L/2+3,12+sp*0.08,-2);ctx.stroke();
     ctx.restore();
   }
   drawBoat3D(b,F);
@@ -1615,16 +1927,20 @@ function sailPoints(b,F,P){
   // belly: a point part-way along the boom, pushed to leeward, at about a third of the mast height
   const ma=mastA-Math.cos(ba)*bl*0.45, ms=Math.sin(ba)*bl*0.45;
   const belly=P(ma+Math.sin(ba)*side*depth, ms+Math.cos(ba)*side*depth, zb+2);   // pushed out to leeward
-  const leech=[];
-  const n=7;
-  for(let k=1;k<n;k++){
-    const t=k/n, w=luff?Math.sin(S.t*28+k*1.9)*3.2*Math.sin(t*Math.PI):0;
+  const leechAt=(t,k)=>{
+    const w=luff?Math.sin(S.t*28+k*1.9)*3.2*Math.sin(t*Math.PI):0;
     const a=mastA-Math.cos(ba)*bl*(1-t), sd=Math.sin(ba)*bl*(1-t);
-    leech.push(P(a+Math.sin(ba)*w,sd+Math.cos(ba)*w,zb+(H-zb)*t));
-  }
-  return {tack,head,clew,belly,leech,luff};
+    return P(a+Math.sin(ba)*w,sd+Math.cos(ba)*w,zb+(H-zb)*t);
+  };
+  const leech=[],n=7;
+  for(let k=1;k<n;k++)leech.push(leechAt(k/n,k));
+  const mastAt=t=>P(mastA,0,zb+(H-zb)*t);
+  // a coloured band across the upper sail, and three battens stiffening the leech
+  const band=[mastAt(0.64),mastAt(0.73),leechAt(0.73,5.11),leechAt(0.64,4.48)];
+  const battens=[0.3,0.5,0.7].map(t=>{const e=leechAt(t,t*7),m=mastAt(t);return [e,lerp3(e,m,0.3)];});
+  return {tack,head,clew,belly,leech,luff,band,battens,mid:mastAt(0.45),lmid:leechAt(0.45,3.15)};
 }
-function drawSail(sp,proj,fill,stroke){
+function sailPath(sp,proj){
   const q=p=>proj(p);
   ctx.beginPath();
   let a=q(sp.tack);ctx.moveTo(a[0],a[1]);
@@ -1633,8 +1949,27 @@ function drawSail(sp,proj,fill,stroke){
   for(const p of sp.leech){const r=q(p);ctx.lineTo(r[0],r[1]);}
   const h=q(sp.head);ctx.lineTo(h[0],h[1]);
   ctx.closePath();
+}
+function drawSail(sp,proj,fill,stroke,shade){
+  sailPath(sp,proj);
   ctx.fillStyle=fill;ctx.fill();
-  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1.4;ctx.lineJoin="round";ctx.stroke();}
+  if(shade){
+    // camber: bright along the mast, shadowed in the belly, a little lighter at the leech
+    const m=proj(sp.mid),l=proj(sp.lmid),g=ctx.createLinearGradient(m[0],m[1],l[0],l[1]);
+    const lit=clamp(dot3(newell([sp.tack,sp.head,sp.clew]).map(Math.abs),[0.3,0.3,0.9]),0,1);
+    const d=0.10+0.16*(1-lit);
+    g.addColorStop(0,"rgba(255,255,255,0.35)");g.addColorStop(0.25,"rgba(255,255,255,0)");
+    g.addColorStop(0.6,"rgba(10,30,45,"+d.toFixed(3)+")");g.addColorStop(1,"rgba(10,30,45,"+(d*0.35).toFixed(3)+")");
+    ctx.fillStyle=g;ctx.fill();
+    // a soft shadow cast by the sail on itself near the foot
+    ctx.save();ctx.clip();
+    ctx.fillStyle=shade;poly(sp.band,proj);ctx.fill();
+    ctx.strokeStyle="rgba(110,130,140,0.55)";ctx.lineWidth=1.1;ctx.beginPath();
+    for(const [e,i] of sp.battens){const a=proj(e),c=proj(i);ctx.moveTo(a[0],a[1]);ctx.lineTo(c[0],c[1]);}
+    ctx.stroke();ctx.restore();
+    sailPath(sp,proj);
+  }
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1.2;ctx.lineJoin="round";ctx.stroke();}
 }
 function drawBoat3D(b,F){
   const P=boatFrame(b),ah=Math.abs(b.heel),look=b.look||PLAYER_LOOK;
@@ -1644,8 +1979,8 @@ function drawBoat3D(b,F){
   const ra=b.rudder*0.6;
   const over=ah>1.0;                                    // mast and sail are down near the water
   // shadows on the water
-  ctx.fillStyle="rgba(0,12,22,0.30)";
-  poly(deck,toShadow);ctx.fill();
+  ctx.fillStyle="rgba(0,12,22,0.26)";ctx.strokeStyle="rgba(0,12,22,0.10)";ctx.lineWidth=5;ctx.lineJoin="round";
+  poly(deck,toShadow);ctx.fill();ctx.stroke();
   if(!over){
     if(!b.moored)drawSail(sp,toShadow,"rgba(0,12,22,0.22)",null);
     ctx.strokeStyle="rgba(0,12,22,0.30)";ctx.lineWidth=2;ctx.beginPath();
@@ -1696,11 +2031,18 @@ function drawBoat3D(b,F){
   const deckF=facing(deck);
   if(deckF.vis>0)items.push({z:deckF.z,draw:()=>{
     ctx.strokeStyle=look.stripe;ctx.lineWidth=1.6;poly(hullRing(P,3.6,0.97),toView);ctx.stroke();
-    ctx.fillStyle="#f6f3ea";poly(deck,toView);ctx.fill();
+    const d0=toView(P(18,-7,5)),d1=toView(P(-18,7,5)),dg=ctx.createLinearGradient(d0[0],d0[1],d1[0],d1[1]);
+    dg.addColorStop(0,"#fffdf6");dg.addColorStop(1,"#e4dfd2");
+    ctx.fillStyle=dg;poly(deck,toView);ctx.fill();
     ctx.strokeStyle="rgba(40,50,55,0.35)";ctx.lineWidth=1;poly(deck,toView);ctx.stroke();
     const ck=[P(2,-6,5),P(2,6,5),P(-19,5.8,5),P(-19,-5.8,5)];
     if(!b.cabin){
-      ctx.fillStyle="#cdbf9e";poly(ck,toView);ctx.fill();
+      const k0=toView(P(2,0,5)),k1=toView(P(-19,0,5)),kg=ctx.createLinearGradient(k0[0],k0[1],k1[0],k1[1]);
+      kg.addColorStop(0,"#d8c9a4");kg.addColorStop(1,"#b9a682");
+      ctx.fillStyle=kg;poly(ck,toView);ctx.fill();
+      ctx.strokeStyle="rgba(120,96,60,0.35)";ctx.lineWidth=0.8;ctx.beginPath();     // planking
+      for(const sd of [-3,0,3]){const a=toView(P(1.5,sd,5)),c=toView(P(-18.5,sd,5));ctx.moveTo(a[0],a[1]);ctx.lineTo(c[0],c[1]);}
+      ctx.stroke();
       ctx.fillStyle="#b3a685";poly([P(2,-6,5),P(2,6,5),P(1,6,3),P(1,-6,3)],toView);ctx.fill();
     }
     submerge(deck);
@@ -1712,9 +2054,17 @@ function drawBoat3D(b,F){
   const behind=b.capsized&&b.cap.phase==="over"&&(ox*-0.2+oy*0.72)<0;
   if(behind)drawCapsizedCrew(b,P);
   items.sort((p,q)=>p.z-q.z).forEach(it=>it.draw());
-  if(!b.capsized&&!b.moored&&deckF.vis>0)drawSeatedCrew(b,P,ra,look.shirt);
-  if(b.moored)drawMooredRig(b,P,mastBase,mastTop);
+  // sailor and sail: whichever is nearer the camera (further down-screen) is drawn last
+  const crewOn=!b.capsized&&!b.moored&&deckF.vis>0;
+  let crewFirst=true;
+  if(crewOn&&!over){
+    const hp=crewPose(b,P,b.crew).hip,bm=lerp3(sp.tack,sp.clew,0.5),near=q=>q.x*-0.2+q.y*0.72;
+    crewFirst=near(hp)<near(bm);
+  }
+  if(crewOn&&crewFirst)drawSeatedCrew(b,P,ra,sailorLook(b),sp);
+  if(b.moored){drawMooredRig(b,P,mastBase,mastTop);if(b.cabin)drawOfficial(b,P);}
   else if(!over)drawRig(b,sp,mastBase,mastTop,F,ah,look);
+  if(crewOn&&!crewFirst)drawSeatedCrew(b,P,ra,sailorLook(b),sp);
   if(b.capsized&&!behind)drawCapsizedCrew(b,P);
 }
 // a moored boat: sail rolled up along the boom, which is lashed down the middle; the committee boat flies a flag
@@ -1733,12 +2083,15 @@ function drawMooredRig(b,P,mastBase,mastTop){
 }
 function drawRig(b,sp,mastBase,mastTop,F,ah,look=PLAYER_LOOK){
   const soak=clamp((ah-0.9)/0.6,0,1);                  // sail lying in the water
-  drawSail(sp,toView,soak?"rgba("+Math.round(255-60*soak)+","+Math.round(255-30*soak)+","+Math.round(255-20*soak)+","+(0.9-0.3*soak).toFixed(2)+")":(sp.luff?"rgba(255,255,255,0.78)":look.sail),"rgba(150,170,175,0.9)");
+  drawSail(sp,toView,soak?"rgba("+Math.round(255-60*soak)+","+Math.round(255-30*soak)+","+Math.round(255-20*soak)+","+(0.9-0.3*soak).toFixed(2)+")":(sp.luff?"rgba(255,255,255,0.82)":look.sail),"rgba(140,160,168,0.9)",soak?null:look.stripe);
   if(soak)submerge([sp.tack,sp.clew,...sp.leech,sp.head]);
   const tb=toView(sp.tack),cb=toView(sp.clew);
-  ctx.strokeStyle="#3a4a50";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(tb[0],tb[1]);ctx.lineTo(cb[0],cb[1]);ctx.stroke();
+  ctx.lineCap="round";
+  ctx.strokeStyle="#33434a";ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(tb[0],tb[1]);ctx.lineTo(cb[0],cb[1]);ctx.stroke();
+  ctx.strokeStyle="rgba(200,215,220,0.55)";ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(tb[0]-0.6,tb[1]-0.8);ctx.lineTo(cb[0]-0.6,cb[1]-0.8);ctx.stroke();
   const mb=toView(mastBase),mt=toView(mastTop);
-  ctx.strokeStyle="#2b3a40";ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(mb[0],mb[1]);ctx.lineTo(mt[0],mt[1]);ctx.stroke();
+  ctx.strokeStyle="#26343a";ctx.lineWidth=2.8;ctx.beginPath();ctx.moveTo(mb[0],mb[1]);ctx.lineTo(mt[0],mt[1]);ctx.stroke();
+  ctx.strokeStyle="rgba(210,225,230,0.6)";ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(mb[0]-0.9,mb[1]);ctx.lineTo(mt[0]-0.9,mt[1]);ctx.stroke();
   // masthead wind indicator: points where the apparent wind is blowing
   if(F&&!b.capsized&&b===S.boat){
     const mxw=mt[0],myw=mt[1];
@@ -1748,62 +2101,179 @@ function drawRig(b,sp,mastBase,mastTop,F,ah,look=PLAYER_LOOK){
     ctx.fillStyle="#ff7b30";ctx.beginPath();ctx.moveTo(mxw+ux*14,myw+uy*14);ctx.lineTo(mxw+ux*7-uy*4,myw+uy*7+ux*4);ctx.lineTo(mxw+ux*7+uy*4,myw+uy*7-ux*4);ctx.closePath();ctx.fill();
   }
 }
-function drawHead(p,r){const q=toView(p);ctx.fillStyle="#e6b98f";ctx.beginPath();ctx.arc(q[0],q[1],r,0,TAU);ctx.fill();
-  ctx.fillStyle="#2f3d44";ctx.beginPath();ctx.arc(q[0],q[1]-0.7,r+0.05,Math.PI*1.05,Math.PI*1.95);ctx.fill();}
+// ---- people ----
+// Each sailor has a look: buoyancy aid (shirt), long-sleeve top, skin, cap (or hair), and legs.
+const HEXC={};
+const hexRGB=c=>HEXC[c]||(HEXC[c]=c.match(/\w\w/g).map(v=>parseInt(v,16)));
+const sailorLook=b=>({...PLAYER_LOOK,...(b.look||{})});
+// a rounded limb, shaded: darker edge with a sunlit stripe along the upper-left side
+function limb2(p0,p1,w,col){
+  const q0=toView(p0),q1=toView(p1),c=hexRGB(col),o=w*0.17;
+  ctx.lineCap="round";
+  ctx.strokeStyle=rgb(c,0.68);ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(q0[0],q0[1]);ctx.lineTo(q1[0],q1[1]);ctx.stroke();
+  ctx.strokeStyle=rgb(c,1.1);ctx.lineWidth=w*0.5;ctx.beginPath();ctx.moveTo(q0[0]-o,q0[1]-o);ctx.lineTo(q1[0]-o,q1[1]-o);ctx.stroke();
+}
+function dot(p,r,col){const q=toView(p);ctx.fillStyle=col;ctx.beginPath();ctx.arc(q[0],q[1],r,0,TAU);ctx.fill();}
+// Two-bone arm or leg: from the joint at a towards the target t, bending the middle joint towards hint.
+// Returns [middle joint, end] (the end is pulled in if the target is out of reach).
+function bend(a,t,len,hint){
+  let dx=t.x-a.x,dy=t.y-a.y,dz=t.z-a.z,d=Math.hypot(dx,dy,dz)||1e-6;
+  dx/=d;dy/=d;dz/=d;const dd=Math.min(d,len*1.96);
+  const end={x:a.x+dx*dd,y:a.y+dy*dd,z:a.z+dz*dd};
+  const k=hint.x*dx+hint.y*dy+hint.z*dz;let bx=hint.x-k*dx,by=hint.y-k*dy,bz=hint.z-k*dz;const bl=Math.hypot(bx,by,bz)||1;
+  const h=Math.sqrt(Math.max(0,len*len-dd*dd/4));
+  return [{x:a.x+dx*dd/2+bx/bl*h,y:a.y+dy*dd/2+by/bl*h,z:a.z+dz*dd/2+bz/bl*h},end];
+}
+// head looking towards a point: shaded face, cap with a peak (or hair with a ponytail) and sunglasses
+function drawHead(p,r,look=PLAYER_LOOK,lookAt){
+  const q=toView(p);
+  let fx=0,fy=-1;
+  if(lookAt){const t=toView(lookAt),l=Math.hypot(t[0]-q[0],t[1]-q[1]);if(l>0.01){fx=(t[0]-q[0])/l;fy=(t[1]-q[1])/l;}}
+  const sk=hexRGB(look.skin||"#e8bd94");
+  if(!look.hat){ // ponytail behind the head
+    ctx.strokeStyle=look.hair||"#3a2a1e";ctx.lineWidth=r*0.7;ctx.lineCap="round";
+    ctx.beginPath();ctx.moveTo(q[0]-fx*r*0.6,q[1]-fy*r*0.6);ctx.quadraticCurveTo(q[0]-fx*r*1.6,q[1]-fy*r*1.3+1,q[0]-fx*r*2,q[1]-fy*r*1.9+1.5);ctx.stroke();
+  }
+  const g=ctx.createRadialGradient(q[0]-r*0.4,q[1]-r*0.45,r*0.1,q[0],q[1],r*1.05);
+  g.addColorStop(0,rgb(sk,1.15));g.addColorStop(1,rgb(sk,0.75));
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(q[0],q[1],r,0,TAU);ctx.fill();
+  const hc=look.hat||look.hair||"#3a2a1e",hr=hexRGB(hc);
+  // crown of the cap / hair: covers the back and top of the head
+  const ang=Math.atan2(fy,fx);
+  ctx.fillStyle=rgb(hr,look.hat?1:0.9);ctx.beginPath();ctx.arc(q[0]-fx*r*0.12,q[1]-fy*r*0.12,r*1.02,ang+1.15,ang-1.15+TAU);ctx.closePath();ctx.fill();
+  if(look.hat){
+    ctx.fillStyle=rgb(hr,1.15);ctx.beginPath();ctx.arc(q[0]-fx*r*0.2-r*0.25,q[1]-fy*r*0.2-r*0.3,r*0.35,0,TAU);ctx.fill();   // sunlit crown
+    ctx.fillStyle=rgb(hr,0.82);ctx.beginPath();ctx.ellipse(q[0]+fx*r*0.95,q[1]+fy*r*0.95,r*0.7,r*0.4,ang+Math.PI/2,0,TAU);ctx.fill();  // peak
+  }else{
+    ctx.fillStyle=rgb(sk,0.95);ctx.beginPath();ctx.arc(q[0]+fx*r*0.25,q[1]+fy*r*0.25,r*0.62,0,TAU);ctx.fill();   // face showing
+  }
+  // sunglasses
+  ctx.strokeStyle="rgba(15,20,25,0.85)";ctx.lineWidth=Math.max(0.8,r*0.3);ctx.lineCap="round";
+  const gx=q[0]+fx*r*(look.hat?0.45:0.55),gy=q[1]+fy*r*(look.hat?0.45:0.55);
+  ctx.beginPath();ctx.moveTo(gx-fy*r*0.55,gy+fx*r*0.55);ctx.lineTo(gx+fy*r*0.55,gy-fx*r*0.55);ctx.stroke();
+}
+// a buoyancy aid: a thick padded block with a lighter shoulder band
+function drawTorso(hip,sh,look,w=6.4){
+  limb2(hip,sh,w,look.shirt);
+  const q=toView(lerp3(hip,sh,0.82)),q0=toView(hip),q1=toView(sh);
+  ctx.strokeStyle="rgba(255,255,255,0.28)";ctx.lineWidth=0.9;ctx.lineCap="butt";      // zip
+  ctx.beginPath();ctx.moveTo(q0[0],q0[1]);ctx.lineTo(q1[0],q1[1]);ctx.stroke();
+  ctx.fillStyle=look.top;ctx.beginPath();ctx.arc(q1[0],q1[1],w*0.42,0,TAU);ctx.fill();   // collar of the top
+}
 // crew: sits down and leans. Near the middle they sit on the cockpit thwart;
 // moving out they sit on the side deck with feet under the toe strap and lean the body out over the water.
+// A little sway keeps them alive.
 function crewPose(b,P,crew){
   const m=Math.abs(crew), sg=crew>=0?1:-1;
   const out=clamp(m/0.35,0,1), lean=clamp((m-0.3)/0.7,0,1);
   const hipS=sg*(1.5+6.5*out+1*lean), hipZ=3.5+2*out;
-  const th=(12+66*lean)*Math.PI/180;
-  return {hip:P(-10,hipS,hipZ),
-    sh:P(-10+1.5,hipS+sg*Math.sin(th)*10,hipZ+Math.cos(th)*10),
-    head:P(-10+2,hipS+sg*Math.sin(th)*14.5,hipZ+Math.cos(th)*14.5),
-    knee:P(-4,hipS-sg*(3+2*out),hipZ+3.5-1.5*lean),
-    foot:P(-1,sg*(2.5-1*out),1.5)};
+  const sway=b.moored?0:Math.sin(S.t*1.5+(b.x||0)*0.01)*0.035+Math.sin(S.t*0.6)*0.02;
+  const th=(12+66*lean)*Math.PI/180+sway*sg;
+  const at=(d,da=0)=>P(-10+0.14*d+da,hipS+sg*Math.sin(th)*d,hipZ+Math.cos(th)*d);
+  return {hip:at(0),sh:at(7.8),shF:at(7.5,1.8),shA:at(7.5,-1.8),head:at(11),
+    knee:P(-4,hipS-sg*(3+2*out),hipZ+3.5-1.5*lean),foot:P(-1,sg*(2.5-1*out),1.5),
+    hold:P(-14,hipS-sg*(2+3*lean),hipZ+3+2*(1-lean)),           // aft hand on the tiller extension
+    sheet:P(-4,hipS-sg*(3+3*lean),hipZ+4+2*(1-lean)),           // forward hand on the mainsheet
+    sg,lean};
 }
-function drawSeatedCrew(b,P,ra,shirt="#d23b31"){
-  const c=crewPose(b,P,b.crew),tEnd=P(-23+Math.cos(ra)*15,Math.sin(ra)*15,6.5);
-  limb(c.hip,c.knee,3.6,"#27465c");limb(c.knee,c.foot,3.2,"#27465c");
-  limb(c.hip,c.sh,6,shirt);limb(c.sh,tEnd,2,"#e6b98f");
-  drawHead(c.head,3);
+// shadow of a figure cast on the deck (plane z = 5 in boat units, close enough when heeled)
+function figureShadow(pts,w){
+  ctx.strokeStyle="rgba(0,12,22,0.2)";ctx.lineWidth=w;ctx.lineCap="round";ctx.lineJoin="round";ctx.beginPath();
+  pts.forEach((p,i)=>{const z=Math.max(0,p.z-5),q=toView({x:p.x+z*SUN.x,y:p.y+z*SUN.y,z:Math.min(p.z,5)});i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});
+  ctx.stroke();
 }
-function drawSwimmer(p,dir,stroke){
-  ctx.fillStyle="rgba(235,248,246,0.35)";ctx.beginPath();ctx.ellipse(p.x,p.y,8,6,0,0,TAU);ctx.fill();
-  const ax=Math.cos(dir),ay=Math.sin(dir),nx=-ay,ny=ax;
-  // arms reaching forward alternately
-  ctx.strokeStyle="#e6b98f";ctx.lineWidth=1.8;ctx.lineCap="round";
-  for(const sgn of [1,-1]){const reach=4+4*Math.max(0,Math.sin(stroke+(sgn>0?0:Math.PI)));
-    ctx.beginPath();ctx.moveTo(p.x+nx*3*sgn,p.y+ny*3*sgn);ctx.lineTo(p.x+nx*4*sgn+ax*reach,p.y+ny*4*sgn+ay*reach);ctx.stroke();}
-  ctx.fillStyle="#e8463c";ctx.beginPath();ctx.arc(p.x,p.y,4.5,0,TAU);ctx.fill();
-  drawHead({x:p.x+ax*3.5,y:p.y+ay*3.5,z:1},2.7);
+function drawSeatedCrew(b,P,ra,look,sp){
+  const c=crewPose(b,P,b.crew),o=P(0,0,0),f=P(1,0,0),down={x:0,y:0,z:-1};
+  const fw={x:f.x-o.x,y:f.y-o.y,z:f.z-o.z};
+  const tEnd=P(-23+Math.cos(ra)*15,Math.sin(ra)*15,6.5);
+  figureShadow([c.foot,c.knee,c.hip,c.sh,c.head],5);
+  // tiller extension: hinged on the end of the tiller, up to the aft hand
+  const [elA,hA]=bend(c.shA,c.hold,4.4,{x:down.x-fw.x*0.6,y:down.y-fw.y*0.6,z:-1});
+  const xq=toView(tEnd),hq=toView(hA);
+  ctx.strokeStyle="#20282c";ctx.lineWidth=1.5;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(xq[0],xq[1]);ctx.lineTo(hq[0],hq[1]);ctx.stroke();
+  ctx.fillStyle="#20282c";ctx.beginPath();ctx.arc(hq[0],hq[1],1.3,0,TAU);ctx.fill();      // grip knob
+  limb2(c.shA,elA,2.3,look.top);limb2(elA,hA,2,look.skin);dot(hA,1.15,rgb(hexRGB(look.skin),0.85));
+  // legs: thigh in shorts, shin, and a dinghy boot under the toe strap
+  limb2(c.hip,c.knee,3.6,look.legs);limb2(c.knee,c.foot,2.8,look.skin);
+  const fq=toView(c.foot);ctx.fillStyle="#1d2328";ctx.beginPath();ctx.ellipse(fq[0],fq[1],2,1.3,b.h,0,TAU);ctx.fill();
+  drawTorso(c.hip,c.sh,look);
+  // mainsheet: from the boom down to a block in the cockpit, then up to the forward hand
+  const [elF,hF]=bend(c.shF,c.sheet,4.4,{x:down.x+fw.x*0.3,y:down.y+fw.y*0.3,z:-1});
+  if(sp){
+    const bm=toView(lerp3(sp.tack,sp.clew,0.72)),bk=toView(P(-6,0,5.5));
+    ctx.strokeStyle="rgba(235,232,220,0.85)";ctx.lineWidth=0.8;ctx.beginPath();
+    ctx.moveTo(bm[0],bm[1]);ctx.lineTo(bk[0],bk[1]);ctx.lineTo(...toView(hF));ctx.stroke();
+    ctx.fillStyle="#30383c";ctx.beginPath();ctx.arc(bk[0],bk[1],1.2,0,TAU);ctx.fill();
+  }
+  limb2(c.shF,elF,2.3,look.top);limb2(elF,hF,2,look.skin);dot(hF,1.15,rgb(hexRGB(look.skin),0.85));
+  // looks up at the sail now and then, otherwise ahead
+  const glance=Math.max(0,Math.sin(S.t*0.35+(b.x||0)*0.003))**6;
+  const ahead=P(40,0,12),luff=sp?lerp3(sp.tack,sp.head,0.6):ahead;
+  drawHead(c.head,3.1,look,lerp3(ahead,luff,glance));
+}
+function drawSwimmer(p,dir,stroke,look=PLAYER_LOOK,grab){
+  const ax=Math.cos(dir),ay=Math.sin(dir),nx=-ay,ny=ax,t=S.t;
+  // ripples spreading from the swimmer, and kicked-up foam behind
+  for(let k=0;k<2;k++){const ph=(t*0.9+k*0.5)%1;ctx.strokeStyle="rgba(235,248,246,"+((1-ph)*0.35).toFixed(3)+")";ctx.lineWidth=1.1;
+    ctx.beginPath();ctx.ellipse(p.x,p.y,6+ph*10,5+ph*8,dir,0,TAU);ctx.stroke();}
+  if(!grab){ctx.fillStyle="rgba(240,250,248,0.55)";
+    for(let k=0;k<4;k++){const j=Math.sin(t*13+k*2.1)*2.5,bk=7+k*2.2;ctx.beginPath();ctx.arc(p.x-ax*bk+nx*j,p.y-ay*bk+ny*j,1.3+0.5*Math.sin(t*9+k),0,TAU);ctx.fill();}}
+  // legs trailing under the water
+  ctx.globalAlpha=0.5;
+  for(const sg of [1,-1]){const kick=Math.sin(t*10+(sg>0?0:Math.PI))*1.5;
+    limb2({x:p.x-ax*2+nx*sg*1.6,y:p.y-ay*2+ny*sg*1.6,z:-1},{x:p.x-ax*9+nx*(sg*2+kick),y:p.y-ay*9+ny*(sg*2+kick),z:-2},2.6,look.legs);}
+  ctx.globalAlpha=1;
+  // body: buoyancy aid floating at the surface
+  ctx.fillStyle="rgba(10,60,78,0.35)";ctx.beginPath();ctx.ellipse(p.x-ax*1.5,p.y-ay*1.5,6,4.6,dir,0,TAU);ctx.fill();
+  const c=hexRGB(look.shirt);
+  const bg=ctx.createRadialGradient(p.x-1.5,p.y-1.5,0.5,p.x,p.y,5);bg.addColorStop(0,rgb(c,1.15));bg.addColorStop(1,rgb(c,0.7));
+  ctx.fillStyle=bg;ctx.beginPath();ctx.ellipse(p.x,p.y,4.8,3.9,dir,0,TAU);ctx.fill();
+  // arms: front crawl, or both hands holding on to something
+  for(const sg of [1,-1]){
+    const shp={x:p.x+ax*1.5+nx*sg*3.3,y:p.y+ay*1.5+ny*sg*3.3,z:0.8};
+    let hand;
+    if(grab)hand={x:grab.x+nx*sg*1.5,y:grab.y+ny*sg*1.5,z:grab.z};
+    else{const ph=stroke+(sg>0?0:Math.PI),fwd=Math.sin(ph),up=Math.max(0,Math.cos(ph));
+      hand={x:shp.x+ax*(1+6*fwd)+nx*sg*1.5,y:shp.y+ay*(1+6*fwd)+ny*sg*1.5,z:up*4-0.5};
+      if(fwd>0.85&&up<0.6){ctx.fillStyle="rgba(240,250,248,0.7)";for(let k=0;k<3;k++){ctx.beginPath();ctx.arc(hand.x+Math.sin(k*2.4+t*20)*2,hand.y+Math.cos(k*2.4+t*20)*2,0.9,0,TAU);ctx.fill();}}}
+    const [el,hd]=bend(shp,hand,4.6,{x:nx*sg,y:ny*sg,z:0.8});
+    limb2(shp,el,2.2,look.top);limb2(el,hd,1.9,look.skin);dot(hd,1.1,rgb(hexRGB(look.skin),0.85));
+  }
+  const hp={x:p.x+ax*4.2,y:p.y+ay*4.2,z:1.2};
+  drawHead(hp,2.8,look,{x:hp.x+ax*5,y:hp.y+ay*5,z:1.2});
 }
 function drawCapsizedCrew(b,P){
-  const c=b.cap,sd=c.side,r={x:Math.cos(b.h),y:Math.sin(b.h)};
+  const c=b.cap,sd=c.side,r={x:Math.cos(b.h),y:Math.sin(b.h)},look=sailorLook(b);
   const sw=swimmerPos(b);
   if(c.phase==="falling"){
-    // thrown off the high side, over the boom, into the water by the sail
+    // thrown off the high side, over the boom, into the water by the sail: arms and legs flailing
     const t=clamp((c.hm-0.7)/(FLAT-0.7),0,1);
     const seat=crewPose(b,P,c.crew0).hip, land={x:sw.land.x,y:sw.land.y,z:0};
     const p=lerp3(seat,land,t);p.z+=Math.sin(t*Math.PI)*10;
-    limb(p,{x:p.x+r.x*sd*6,y:p.y+r.y*sd*6,z:p.z+4},5.5,"#d23b31");
-    drawHead({x:p.x+r.x*sd*9,y:p.y+r.y*sd*9,z:p.z+6},3);
+    const fl=Math.sin(S.t*18),o={x:r.x*sd,y:r.y*sd};
+    const sh={x:p.x+o.x*6,y:p.y+o.y*6,z:p.z+4},hd={x:p.x+o.x*9,y:p.y+o.y*9,z:p.z+6};
+    figureShadow([p,sh],5);
+    for(const sg of [1,-1]){
+      limb2(p,{x:p.x-o.x*4+r.y*sg*3,y:p.y-o.y*4-r.x*sg*3,z:p.z+2+fl*sg*2},2.8,look.legs);
+      limb2(sh,{x:sh.x+o.x*2+r.y*sg*5,y:sh.y+o.y*2-r.x*sg*5,z:sh.z+3+fl*sg*3},2,look.top);
+    }
+    drawTorso(p,sh,look,6);
+    drawHead(hd,3,look,{x:hd.x+o.x*4,y:hd.y+o.y*4,z:hd.z-3});
     return;
   }
-  const tip=boardTip(b),root=P(2,0,-2);
+  const tip=boardTip(b);
   const out={x:-r.x*sd,y:-r.y*sd};                       // away from the hull, on the high side
   if(c.phase==="over"&&c.swim<1){
     const dt=0.02,c2={...c,swim:Math.min(1,c.swim+dt)};const nxt=swimmerPos({...b,cap:c2});
-    drawSwimmer(sw,Math.atan2(nxt.y-sw.y,nxt.x-sw.x),S.t*7);
+    drawSwimmer(sw,Math.atan2(nxt.y-sw.y,nxt.x-sw.x),S.t*7,look);
     return;
   }
   if(c.phase==="over"){
     if(c.lever<0.02){ // hanging on to the end of the centreboard, waiting
-      drawSwimmer({x:tip.x+out.x*4,y:tip.y+out.y*4,z:0},Math.atan2(-out.y,-out.x),0);
+      drawSwimmer({x:tip.x+out.x*5,y:tip.y+out.y*5,z:0},Math.atan2(-out.y,-out.x),0,look,{x:tip.x,y:tip.y,z:Math.max(0.5,tip.z)});
       return;
     }
-    drawRighter(righterPose(b,P,c,out));
+    drawRighter(righterPose(b,P,c,out),look,P);
     return;
   }
   // popping: as she comes up the board drops away, the sailor slides into the water beside the
@@ -1814,7 +2284,7 @@ function drawCapsizedCrew(b,P){
   const k={feet:lerp3(f.feet,seat.foot,e),knee:lerp3(f.knee,seat.knee,e),hip:lerp3(f.hip,seat.hip,e),
     sh:lerp3(f.sh,seat.sh,e),head:lerp3(f.head,seat.head,e),hand:lerp3(f.hand,seat.knee,e)};
   for(const q of [k.hip,k.sh,k.head])q.z-=sag;
-  drawRighter(k);
+  drawRighter(k,look,P);
 }
 // Standing on the centreboard: feet near the hull, body straight and leaning back away from the boat,
 // arms stretched to the gunwale. The further she has come up, the further back the sailor leans.
@@ -1836,15 +2306,46 @@ function righterPose(b,P,c,out){
   const hand={x:sh.x+dx/dl*al,y:sh.y+dy/dl*al,z:sh.z+dz/dl*al};
   return {feet,knee,hip,sh,head,hand};
 }
-function drawRighter(k){
+function drawRighter(k,look=PLAYER_LOOK,P){
   // soft shadow on the water under the body
   const sh0=toShadow(k.feet),sh1=toShadow(k.head);
   ctx.strokeStyle="rgba(0,12,22,0.25)";ctx.lineWidth=6;ctx.lineCap="round";
   ctx.beginPath();ctx.moveTo(sh0[0],sh0[1]);ctx.lineTo(sh1[0],sh1[1]);ctx.stroke();
-  limb(k.feet,k.knee,3.4,"#27465c");limb(k.knee,k.hip,3.8,"#27465c");   // legs
-  limb(k.sh,k.hand,2,"#e6b98f");                                     // arms to the gunwale
-  limb(k.hip,k.sh,6,"#d23b31");                                       // body in buoyancy aid
-  drawHead(k.head,3);
+  // the two shoulders and hands sit either side of the body's line
+  const ax=k.sh.x-k.hip.x,ay=k.sh.y-k.hip.y,al=Math.hypot(ax,ay)||1,sx=-ay/al*1.8,sy=ax/al*1.8;
+  const up={x:0,y:0,z:-1};
+  // legs: wet, bent a little at the knee, boots on the board
+  for(const sg of [1,-1]){
+    const f={x:k.feet.x+sx*sg*0.6,y:k.feet.y+sy*sg*0.6,z:k.feet.z},kn={x:k.knee.x+sx*sg*0.7,y:k.knee.y+sy*sg*0.7,z:k.knee.z},h={x:k.hip.x+sx*sg*0.5,y:k.hip.y+sy*sg*0.5,z:k.hip.z};
+    limb2(kn,h,3.2,look.legs);limb2(f,kn,2.6,look.skin);
+    const fq=toView(f);ctx.fillStyle="#1d2328";ctx.beginPath();ctx.arc(fq[0],fq[1],1.5,0,TAU);ctx.fill();
+  }
+  drawTorso(k.hip,k.sh,look);
+  for(const sg of [1,-1]){
+    const s0={x:k.sh.x+sx*sg,y:k.sh.y+sy*sg,z:k.sh.z},hd={x:k.hand.x+sx*sg*1.2,y:k.hand.y+sy*sg*1.2,z:k.hand.z};
+    const [el,h2]=bend(s0,hd,3.7,up);
+    limb2(s0,el,2.2,look.top);limb2(el,h2,1.9,look.skin);dot(h2,1.1,rgb(hexRGB(look.skin),0.85));
+  }
+  drawHead(k.head,3,look,k.hand);
+}
+// race officer on the committee boat: stands at the back, raising the flag in the last minute before the start
+function drawOfficial(b,P){
+  const look={shirt:"#ff7b30",top:"#24303a",skin:"#d9a27a",hat:"#24303a",legs:"#24303a"};
+  const ft=P(-12,2,5),hip=P(-12,2,11),sh=P(-12,2,16),hd=P(-12,2,18.6);
+  figureShadow([ft,hip,sh,hd],4);
+  for(const sg of [1,-1]){limb2(P(-12,2+sg*0.9,5),P(-12,2+sg*0.9,11),2.4,look.legs);}
+  drawTorso(hip,sh,look,5);
+  const rem=S.mode==="race"&&S.race?S.race.gun-S.t:99,up=rem>0&&rem<60;
+  const hand=up?P(-11,4.5,24):P(-10,3.6,10);
+  const [el,h2]=bend(P(-12,3.6,15.5),hand,3.4,up?{x:0,y:0,z:-1}:P(-13,6,13));
+  limb2(P(-12,3.6,15.5),el,1.9,look.top);limb2(el,h2,1.7,look.skin);
+  if(up){ // flag on a short stick
+    const top=P(-11,4.5,31);limb(h2,top,1,"#30383c");
+    const q=toView(top),w=Math.sin(S.t*8)*1.5,tx=-Math.sin(S.wind.from),ty=Math.cos(S.wind.from);
+    ctx.fillStyle="#ffd447";ctx.beginPath();ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0]+tx*9+w,q[1]+ty*9+1);ctx.lineTo(q[0]+tx*8,q[1]+ty*8+5);ctx.lineTo(q[0],q[1]+5);ctx.closePath();ctx.fill();
+  }
+  limb2(P(-12,0.4,15.5),P(-11,0.2,10.5),1.9,look.top);
+  drawHead(hd,2.4,look,P(10,-20,18));
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1907,6 +2408,9 @@ function drawDial(){
   const at=(deg,r)=>{const a=wf+deg*Math.PI/180-Math.PI/2;return [Math.cos(a)*r,Math.sin(a)*r];};
   const sector=(a0,a1,col)=>{for(const sg of [1,-1]){dctx.beginPath();dctx.moveTo(0,0);
     dctx.arc(0,0,R,wf-Math.PI/2+sg*a0*Math.PI/180,wf-Math.PI/2+sg*a1*Math.PI/180,sg<0);dctx.closePath();dctx.fillStyle=col;dctx.fill();}};
+  const bg=dctx.createRadialGradient(-R*0.3,-R*0.35,4,0,0,R);
+  bg.addColorStop(0,"rgba(40,110,124,0.55)");bg.addColorStop(1,"rgba(8,40,52,0.6)");
+  dctx.fillStyle=bg;dctx.beginPath();dctx.arc(0,0,R,0,TAU);dctx.fill();
   sector(0,42,"rgba(255,98,102,0.30)");
   sector(42,60,"rgba(113,227,166,0.16)");
   sector(80,105,"rgba(113,227,166,0.30)");
@@ -1928,7 +2432,10 @@ function drawDial(){
   q=at(180,R-13);dctx.fillText("RUN",q[0],q[1]);
   // boat at its heading
   dctx.rotate(S.boat?S.boat.h:0);
-  dctx.fillStyle="#f4f1e8";dctx.beginPath();dctx.moveTo(0,-26);dctx.bezierCurveTo(9,-16,10,4,8,18);dctx.lineTo(-8,18);dctx.bezierCurveTo(-10,4,-9,-16,0,-26);dctx.closePath();dctx.fill();
+  dctx.shadowColor="rgba(0,0,0,0.45)";dctx.shadowBlur=6;dctx.shadowOffsetX=2;dctx.shadowOffsetY=3;
+  const hg=dctx.createLinearGradient(-9,0,9,0);hg.addColorStop(0,"#ffffff");hg.addColorStop(1,"#d9d4c6");
+  dctx.fillStyle=hg;dctx.beginPath();dctx.moveTo(0,-26);dctx.bezierCurveTo(9,-16,10,4,8,18);dctx.lineTo(-8,18);dctx.bezierCurveTo(-10,4,-9,-16,0,-26);dctx.closePath();dctx.fill();
+  dctx.shadowColor="transparent";dctx.shadowBlur=0;dctx.shadowOffsetX=0;dctx.shadowOffsetY=0;
   if(S.boat&&!S.boat.capsized){const ba=S.boat.boomDraw;dctx.strokeStyle="#ff7b30";dctx.lineWidth=2.4;dctx.beginPath();dctx.moveTo(0,-8);dctx.lineTo(Math.sin(ba)*22,-8+Math.cos(ba)*22);dctx.stroke();}
 }
 
@@ -1940,7 +2447,10 @@ function drawMinimap(){
   mctx.setTransform(dpr,0,0,dpr,0,0);mctx.clearRect(0,0,w,h);
   const bx0=-1750,by0=-2450,bw=2700,bh=3250,k=Math.min(w/bw,h/bh);
   const X=x=>(x-bx0)*k,Y=y=>(y-by0)*k;
-  mctx.fillStyle="rgba(17,88,107,0.6)";mctx.fillRect(0,0,w,h);
+  const mg=mctx.createLinearGradient(0,0,w,h);mg.addColorStop(0,"rgba(26,108,126,0.65)");mg.addColorStop(1,"rgba(10,62,80,0.65)");
+  mctx.fillStyle=mg;mctx.fillRect(0,0,w,h);
+  for(const o of S.obstacles)if(o.kind==="island"||o.kind==="rock"){
+    mctx.fillStyle="rgba(118,214,196,0.25)";mctx.beginPath();mctx.arc(X(o.x),Y(o.y),Math.max(3,(o.r+(o.kind==="island"?90:30))*k),0,TAU);mctx.fill();}
   for(const o of S.obstacles){
     mctx.fillStyle=o.kind==="island"?"#d9c58f":o.kind==="rock"?"#9aa19a":o.kind==="committee"?"#f1efe6":o.kind==="pin"?"#ff7b30":"#9fb2bb";
     mctx.beginPath();mctx.arc(X(o.x),Y(o.y),Math.max(1.6,o.r*k),0,TAU);mctx.fill();
@@ -2015,7 +2525,7 @@ function updateHUD(){
   else if(diff>0.14){chip="Too loose";cls="warn";}
   else if(diff<-0.14){chip="Too tight";cls="bad";}
   if(S.auto&&cls!=="bad"&&absA>=0.62){chip="Auto";cls="good";}
-  const heelD=b.heel*D,lowSide=heelD>0?"starboard":"port",leanKey=heelD>0?"Q or swipe left":"E or swipe right";
+  const heelD=b.heel*D,lowSide=heelD>0?"starboard":"port",leanKey=(heelD>0?"Q":"E")+" or swipe across the boat to "+(heelD>0?"port":"starboard");
   if(b.capsized){chip="Capsized";cls="bad";const c=b.cap;
     tip=c.phase==="falling"?"Over she goes!":c.phase==="popping"?"She's coming up. Sheet in gently once you're back in.":
       c.swim<1?"Swim round to the centreboard (the fin sticking out of the bottom of the boat). Holding Space swims faster.":
@@ -2064,13 +2574,23 @@ function updateHUD(){
 let last=performance.now(),acc=0;
 const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 function frame(now){
-  let dt=Math.min(0.1,(now-last)/1000);last=now;
+  const raw=(now-last)/1000;let dt=Math.min(0.1,raw);last=now;
+  // frames slower than ~40 fps for a couple of seconds: step the graphics down a level
+  // (very long gaps are a hidden tab or a pause in the browser, not slow drawing)
+  // (ignores the first few seconds, while fonts load and the page settles)
+  if(raw<0.5&&(warmT+=raw)>4){
+    if(raw>0.03)slowT+=raw;else slowT=Math.max(0,slowT-raw*0.5);
+    fastT=raw<0.02?fastT+raw:0;
+    if(slowT>3&&GQ>-1){GQ--;slowT=0;fastT=0;if(GQ<0)resize();}
+    else if(fastT>15&&GQ<2){GQ++;fastT=0;if(GQ===0)resize();}
+  }
   const live=S.mode!=="menu"&&!S.paused&&!(S.race&&S.race.stage==="done");
   if(live){acc+=dt;while(acc>=1/120){step(1/120);acc-=1/120;}}
   else{S.t+=dt*(S.paused?0:1);if(S.mode==="menu"){S.cam.x+=Math.sin(S.t*0.05)*0.2;updateWind(dt);}}
   // waves and streaks move at a speed set by the wind, accumulated frame by frame so a change in
   // wind strength changes their speed smoothly instead of making them jump
-  if(!S.paused){const rate=S.wind.speed/110;S.wavePh=((S.wavePh||0)+dt*0.22*rate)%1000;S.streakPh=((S.streakPh||0)+dt*0.11*rate)%1000;}
+  if(!S.paused){const rate=S.wind.speed/110;S.wavePh=((S.wavePh||0)+dt*0.22*rate)%1000;S.streakPh=((S.streakPh||0)+dt*0.11*rate)%1000;
+    const v=S.wind.speed*0.09*dt;S.chopX=((S.chopX||0)-Math.sin(S.wind.from)*v)%9728;S.chopY=((S.chopY||0)+Math.cos(S.wind.from)*v)%9728;}  // 9728 keeps every texture layer seamless when it wraps
   S.zoom=clamp(Math.min(W,H)/780,0.55,1.15);
   if(S.boat&&S.mode!=="menu"){
     const b=S.boat,la=0.9;
@@ -2082,11 +2602,15 @@ function frame(now){
   drawWater();
   if(S.mode!=="menu"){
     worldTransform();
+    drawShallows();
     drawFixedRefs();
     if(S.mode==="race")drawCourse();
     drawTrail();
+    if(live){sampleWakes();sprayFrom(S.boat,S.F,dt);if(S.mode==="race")for(const ai of S.ais)sprayFrom(ai.b,ai.F,dt);}
+    drawWakes();
     drawFx("ring");
     if(!S.boat.capsized)drawMotion();
+    drawSwipeAxis();
     drawScene();
     drawFx("drop");
     drawEdgeArrow();
