@@ -2863,26 +2863,48 @@ function targetPoint(){
   if(S.mode!=="race")return null;
   const r=S.race;
   if(r.stage==="done")return null;
-  if(!r.started||r.next>=MARKS.length)return {x:0,y:0,label:r.started?"Finish":"Start"};
-  return {x:MARKS[r.next].x,y:MARKS[r.next].y,label:"Mark "+(r.next+1)};
-  return null;
+  if(!r.started)return {x:0,y:0,label:"Start line",sub:"cross it after the gun"};
+  if(r.next>=MARKS.length)return {x:0,y:0,label:"Finish line",sub:"cross it going upwind"};
+  return {x:MARKS[r.next].x,y:MARKS[r.next].y,label:MARKS[r.next].name,sub:"keep it on your left"};
 }
+// Pointer to the next mark when it's off screen. It sits on a ring round your own boat, so it reads as
+// "from here, steer that way": a dotted guide from the boat, a bold arrow, and a tag saying what it points at
+// and how far.
 function drawEdgeArrow(){
   const t=targetPoint();if(!t)return;
   ctx.setTransform(DPR,0,0,DPR,0,0);
-  const sx=W/2+(t.x-S.cam.x)*S.zoom,sy=H/2+(t.y-S.cam.y)*S.zoom,m=56;
-  if(sx>m&&sx<W-m&&sy>m+60&&sy<H-m)return;
-  // the arrow sits well inside the screen, on a ring a quarter of the way in, clear of the panels at the edges
-  const dx=sx-W/2,dy=sy-H/2,a=Math.atan2(dy,dx),pm=Math.max(150,Math.min(W,H)*0.25);
-  const kx=(W/2-pm)/Math.abs(dx||1e-6),ky=(H/2-pm)/Math.abs(dy||1e-6),k=Math.min(kx,ky);
-  const ax=W/2+dx*k,ay=H/2+dy*k;
-  ctx.save();ctx.translate(ax,ay);
-  ctx.fillStyle="rgba(5,27,36,0.85)";ctx.beginPath();ctx.arc(0,0,24,0,TAU);ctx.fill();
-  ctx.rotate(a);ctx.fillStyle="#ffd447";ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(4,-9);ctx.lineTo(4,9);ctx.closePath();ctx.fill();
+  const sx=W/2+(t.x-S.cam.x)*S.zoom,sy=H/2+(t.y-S.cam.y)*S.zoom,m=70;
+  const onScreen=sx>m&&sx<W-m&&sy>m+60&&sy<H-m;
+  const bx=W/2+(S.boat.x-S.cam.x)*S.zoom,by=H/2+(S.boat.y-S.cam.y)*S.zoom;
+  const dx=t.x-S.boat.x,dy=t.y-S.boat.y,dist=Math.hypot(dx,dy);
+  // fade out as the mark comes onto the screen, where it is highlighted itself
+  S.arrowA=approach(S.arrowA??0,onScreen?0:1,0.06);
+  if(S.arrowA<=0.01||dist<1)return;
+  const ux=dx/dist,uy=dy/dist,a=Math.atan2(uy,ux);
+  const R=Math.max(110,Math.min(W,H)*0.24),ax=bx+ux*R,ay=by+uy*R;
+  ctx.save();ctx.globalAlpha=S.arrowA;
+  // dotted guide from just outside the boat to the arrow
+  ctx.setLineDash([2,7]);ctx.lineCap="round";ctx.lineWidth=2.5;ctx.strokeStyle="rgba(255,212,71,0.55)";
+  ctx.beginPath();ctx.moveTo(bx+ux*48,by+uy*48);ctx.lineTo(ax-ux*20,ay-uy*20);ctx.stroke();ctx.setLineDash([]);
+  // arrow: a bold head with a short tail, outlined dark so it shows on any water
+  const pulse=1+0.06*Math.sin(S.t*4);
+  ctx.translate(ax,ay);ctx.rotate(a);ctx.scale(pulse,pulse);
+  ctx.beginPath();ctx.moveTo(22,0);ctx.lineTo(-4,-16);ctx.lineTo(1,-6);ctx.lineTo(-16,-6);ctx.lineTo(-16,6);ctx.lineTo(1,6);ctx.lineTo(-4,16);ctx.closePath();
+  ctx.lineJoin="round";ctx.lineWidth=5;ctx.strokeStyle="rgba(5,27,36,0.9)";ctx.stroke();
+  ctx.fillStyle="#ffd447";ctx.fill();
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  // tag beyond the arrow, kept upright and on screen
+  const l1=t.label,l2=Math.round(dist/PX_PER_M)+" m · "+t.sub;
+  ctx.font="700 12px 'JetBrains Mono',monospace";const w1=ctx.measureText(l1).width;
+  ctx.font="500 11px 'JetBrains Mono',monospace";const w2=ctx.measureText(l2).width;
+  const tw=Math.max(w1,w2)+20,th=38,off=34+Math.abs(ux)*tw/2+Math.abs(uy)*th/2;
+  let tx=clamp(ax+ux*off-tw/2,10,W-tw-10),ty=clamp(ay+uy*off-th/2,70,H-th-10);
+  ctx.fillStyle="rgba(5,27,36,0.88)";ctx.strokeStyle="rgba(255,212,71,0.8)";ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.roundRect?ctx.roundRect(tx,ty,tw,th,8):ctx.rect(tx,ty,tw,th);ctx.fill();ctx.stroke();
+  ctx.textAlign="left";ctx.textBaseline="middle";
+  ctx.fillStyle="#ffd447";ctx.font="700 12px 'JetBrains Mono',monospace";ctx.fillText(l1,tx+10,ty+13);
+  ctx.fillStyle="#e6f2ef";ctx.font="500 11px 'JetBrains Mono',monospace";ctx.fillText(l2,tx+10,ty+27);
   ctx.restore();
-  const dist=Math.hypot(t.x-S.boat.x,t.y-S.boat.y)/PX_PER_M;
-  ctx.fillStyle="#ffd447";ctx.font="700 11px 'JetBrains Mono',monospace";ctx.textAlign="center";ctx.textBaseline="middle";
-  ctx.fillText(Math.round(dist)+"m",ax,ay);
 }
 
 // big countdown numbers for the last ten seconds before the start, then GO
