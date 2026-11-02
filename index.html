@@ -127,6 +127,11 @@ button{font:inherit;color:inherit}
 .vstate{position:absolute;right:38px;transform:translateY(-50%);font-weight:700;font-size:13px;line-height:1.1;white-space:nowrap;
   padding:3px 7px;border-radius:6px;border:1.5px solid currentColor;background:rgba(5,27,36,.85);transition:top .12s}
 .vstate.good{color:var(--good)}.vstate.warn{color:var(--warn)}.vstate.bad{color:var(--bad)}
+/* slack: rope let out further than the sail can go (it stops where the wind is). The hollow marker shows how
+   far the rope is out; the dashed span is the slack you'll have to take in with ↑ before the sail moves. */
+.vtrack .slackSpan{position:absolute;left:50%;width:2px;margin-left:-1px;background:repeating-linear-gradient(to bottom,rgba(230,242,239,.75) 0 3px,transparent 3px 6px)}
+.vtrack .slackTick{position:absolute;left:-6px;right:-6px;height:6px;margin-top:-3px;border:1.5px dashed rgba(230,242,239,.85);border-radius:2px;box-sizing:border-box}
+.vtrack .slackTick::after{content:"slack";position:absolute;right:calc(100% + 4px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;color:var(--muted)}
 .vtrack .tick.good{background:var(--good)}.vtrack .tick.warn{background:var(--warn)}.vtrack .tick.bad{background:var(--bad)}
 .vtrack .fill{position:absolute;left:0;right:0;top:0;background:rgba(230,242,239,.25);border-radius:9px}
 .vtrack .zone{position:absolute;left:0;right:0;background:rgba(113,227,166,.45);box-shadow:inset 0 1px var(--good),inset 0 -1px var(--good);border-radius:3px;transition:top .25s,height .25s}
@@ -263,7 +268,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
   <div class="row mid">
     <section class="panel" id="sailPanel" aria-label="Sail trim">
       <div class="eyebrow">Sail <span class="num" id="rSheet">45°</span></div><span class="end">in ↑</span>
-      <div class="vrow"><div class="vtrack"><div class="zone" id="zSheet"></div><div class="fill" id="bSheet"></div><div class="tick" id="tSheet"></div></div>
+      <div class="vrow"><div class="vtrack"><div class="zone" id="zSheet"></div><div class="fill" id="bSheet"></div><div class="slackSpan" id="sSpan" hidden></div><div class="slackTick" id="sTick" hidden></div><div class="tick" id="tSheet"></div></div>
         <div class="vstate good" id="sState">Good</div></div>
       <span class="end">out ↓</span>
     </section>
@@ -3069,6 +3074,9 @@ function updateHUD(){
   if(absAw<0.62||b.capsized)zs.style.height="0";
   else{const lo=Math.max(0,optB-0.14),hi=Math.min(sMax,optB+0.14,absAw);zs.style.top=(lo/sMax*100).toFixed(1)+"%";zs.style.height=(Math.max(0,hi-lo)/sMax*100).toFixed(1)+"%";}
   $("rSheet").textContent=Math.round(F.boom*D)+"°";
+  const slack=b.sheet-F.boom,hasSlack=slack>0.05&&!b.capsized;
+  $("sSpan").hidden=$("sTick").hidden=!hasSlack;
+  if(hasSlack){$("sSpan").style.top=(F.boom/sMax*100).toFixed(1)+"%";$("sSpan").style.height=(slack/sMax*100).toFixed(1)+"%";$("sTick").style.top=(b.sheet/sMax*100).toFixed(1)+"%";}
   $("autoTag").textContent=S.auto?"ON":"";
   $("touchUp").hidden=!b.capsized;
   // lift / header
