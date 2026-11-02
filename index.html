@@ -302,7 +302,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
     <div class="levels">
       <span class="eyebrow">Wind</span>
       <div class="seg" role="group" aria-label="Wind strength">
-        <button class="lvl" data-l="light" aria-pressed="false">Light</button><button class="lvl" data-l="moderate" aria-pressed="false">Moderate</button><button class="lvl" data-l="strong" aria-pressed="false">Strong</button>
+        <button class="lvl" data-l="light" aria-pressed="false">Light</button><button class="lvl" data-l="moderate" aria-pressed="false">Moderate</button><button class="lvl" data-l="strong" aria-pressed="false">Strong</button><button class="lvl" data-l="gale" aria-pressed="false">Gale</button>
       </div>
       <span id="lvlDesc"></span>
       <span class="hint"><kbd>←</kbd> <kbd>→</kbd> to change</span>
@@ -587,9 +587,11 @@ const LEVELS={
   moderate:{label:"Moderate",desc:"7 to 14 knots. Regular wind shifts and gusts. Lean out in the puffs.",
     spd:[85,165],start:115,shift:[0.10,0.26],every:[22,45],lim:0.45,osc:0.12,gust:[0.18,0.32],nG:6,capsize:0.70},
   strong:{label:"Strong",desc:"12 to 19 knots. Big shifts and heavy gusts. Easy to capsize.",
-    spd:[145,225],start:175,shift:[0.15,0.40],every:[15,32],lim:0.70,osc:0.16,gust:[0.28,0.45],nG:8,capsize:0.66}
+    spd:[145,225],start:175,shift:[0.15,0.40],every:[15,32],lim:0.70,osc:0.16,gust:[0.28,0.45],nG:8,capsize:0.66},
+  gale:{label:"Gale",desc:"20 to 30 knots, gusting harder. Violent shifts and squalls. Hang on, and dump the sail in the gusts.",
+    spd:[230,340],start:280,shift:[0.18,0.48],every:[12,26],lim:0.85,osc:0.2,gust:[0.30,0.50],nG:10,capsize:0.62}
 };
-const LEVEL_KEYS=["light","moderate","strong"];
+const LEVEL_KEYS=["light","moderate","strong","gale"];
 let levelKey="moderate";
 try{const v=localStorage.getItem("closeHauledLevel");if(LEVELS[v])levelKey=v;}catch(e){}
 const LV=()=>LEVELS[levelKey];
@@ -886,7 +888,7 @@ window.addEventListener("keydown",e=>{
     if(c==="Digit1"||c==="Numpad1")startMode("open");
     if(c==="Digit2"||c==="Numpad2")startMode("race");
     if(c==="KeyN"){Snd.on=!Snd.on;try{localStorage.setItem("closeHauledSound",Snd.on?"1":"0");}catch(e){}}
-    if(c==="ArrowLeft"||c==="ArrowRight"){const i=LEVEL_KEYS.indexOf(levelKey)+(c==="ArrowRight"?1:-1);setLevel(LEVEL_KEYS[clamp(i,0,2)]);}
+    if(c==="ArrowLeft"||c==="ArrowRight"){const i=LEVEL_KEYS.indexOf(levelKey)+(c==="ArrowRight"?1:-1);setLevel(LEVEL_KEYS[clamp(i,0,LEVEL_KEYS.length-1)]);}
     if(c==="ArrowUp"||c==="ArrowDown"){const i=COURSE_KEYS.indexOf(courseKey)+(c==="ArrowDown"?1:-1);pickCourse(COURSE_KEYS[(i+COURSE_KEYS.length)%COURSE_KEYS.length]);}
     return;
   }
@@ -1049,7 +1051,13 @@ function step(dt){
   if(held("out")){b.sheet+=0.9*dt;S.auto=false;}
   const w=windAt(b.x,b.y);
   let F=sailForces(b,w.speed,w.from);
-  if(S.auto) b.sheet=approach(b.sheet,bestBoom(Math.abs(F.awa)),1.4*dt);
+  if(S.auto){
+    // when overpowered (heeling past ~22°) auto-trim spills wind, easing further the harder she heels,
+    // then slowly pulls back in as she comes upright
+    const over=clamp((Math.abs(b.heel)-0.34)*4,0,0.8);
+    S.autoEase=approach(S.autoEase||0,over,(over>(S.autoEase||0)?5:0.35)*dt);
+    b.sheet=approach(b.sheet,Math.min(K.sheetMax,bestBoom(Math.abs(F.awa))+S.autoEase),(1.4+4*over)*dt);
+  }else S.autoEase=0;
   b.sheet=clamp(b.sheet,K.sheetMin,K.sheetMax);
   F=sailForces(b,w.speed,w.from);
   F.gust=w.gust;F.tws=w.speed;
@@ -1642,7 +1650,7 @@ function drawWater(){
   worldTransform();
   const {x0,y0,x1,y1}=viewRect(80),RW=x1-x0,RH=y1-y0;
   const f=S.wind.from,tx=-Math.sin(f),ty=Math.cos(f),qx=-ty,qy=tx;
-  const windK=clamp(S.wind.speed/180,0.25,1);
+  const windK=clamp(S.wind.speed/180,0.25,1.35);
   // big soft patches of colour, fixed to the sea bed
   if(EQ>0&&FX.depth)patFill(pat("depth",TEX_DEPTH),40,0,0,x0,y0,RW,RH,1);    // opaque: also paints the base colour
   // fine chop: two layers drifting downwind at different speeds, so the surface shimmers
@@ -2882,28 +2890,34 @@ function drawEdgeArrow(){
   if(S.arrowA<=0.01||dist<1)return;
   const ux=dx/dist,uy=dy/dist,a=Math.atan2(uy,ux);
   const R=Math.max(110,Math.min(W,H)*0.24),ax=bx+ux*R,ay=by+uy*R;
-  ctx.save();ctx.globalAlpha=S.arrowA;
-  // dotted guide from just outside the boat to the arrow
-  ctx.setLineDash([2,7]);ctx.lineCap="round";ctx.lineWidth=2.5;ctx.strokeStyle="rgba(255,212,71,0.55)";
-  ctx.beginPath();ctx.moveTo(bx+ux*48,by+uy*48);ctx.lineTo(ax-ux*20,ay-uy*20);ctx.stroke();ctx.setLineDash([]);
-  // arrow: a bold head with a short tail, outlined dark so it shows on any water
-  const pulse=1+0.06*Math.sin(S.t*4);
-  ctx.translate(ax,ay);ctx.rotate(a);ctx.scale(pulse,pulse);
-  ctx.beginPath();ctx.moveTo(22,0);ctx.lineTo(-4,-16);ctx.lineTo(1,-6);ctx.lineTo(-16,-6);ctx.lineTo(-16,6);ctx.lineTo(1,6);ctx.lineTo(-4,16);ctx.closePath();
-  ctx.lineJoin="round";ctx.lineWidth=5;ctx.strokeStyle="rgba(5,27,36,0.9)";ctx.stroke();
-  ctx.fillStyle="#ffd447";ctx.fill();
+  const gold="255,212,71";
+  ctx.save();ctx.globalAlpha=S.arrowA;ctx.lineCap="round";ctx.lineJoin="round";
+  // a fine guide from the boat that brightens towards the pointer
+  const g=ctx.createLinearGradient(bx+ux*44,by+uy*44,ax,ay);
+  g.addColorStop(0,"rgba("+gold+",0)");g.addColorStop(1,"rgba("+gold+",0.55)");
+  ctx.strokeStyle=g;ctx.lineWidth=1.2;ctx.setLineDash([1,6]);
+  ctx.beginPath();ctx.moveTo(bx+ux*44,by+uy*44);ctx.lineTo(ax-ux*12,ay-uy*12);ctx.stroke();ctx.setLineDash([]);
+  // a slender chevron with a second, fainter one trailing it, drifting gently forward
+  const drift=(S.t*0.8)%1;
+  ctx.translate(ax,ay);ctx.rotate(a);
+  ctx.shadowColor="rgba(0,0,0,0.45)";ctx.shadowBlur=6;
+  const chev=(x,al)=>{ctx.strokeStyle="rgba("+gold+","+al+")";ctx.beginPath();ctx.moveTo(x-7,-9);ctx.lineTo(x+4,0);ctx.lineTo(x-7,9);ctx.stroke();};
+  ctx.lineWidth=2.6;chev(2,1);
+  ctx.lineWidth=1.8;chev(-9+drift*4,0.25+0.35*(1-drift));
+  ctx.shadowBlur=0;
   ctx.setTransform(DPR,0,0,DPR,0,0);
-  // tag beyond the arrow, kept upright and on screen
-  const l1=t.label,l2=Math.round(dist/PX_PER_M)+" m · "+t.sub;
-  ctx.font="700 12px 'JetBrains Mono',monospace";const w1=ctx.measureText(l1).width;
-  ctx.font="500 11px 'JetBrains Mono',monospace";const w2=ctx.measureText(l2).width;
-  const tw=Math.max(w1,w2)+20,th=38,off=34+Math.abs(ux)*tw/2+Math.abs(uy)*th/2;
-  let tx=clamp(ax+ux*off-tw/2,10,W-tw-10),ty=clamp(ay+uy*off-th/2,70,H-th-10);
-  ctx.fillStyle="rgba(5,27,36,0.88)";ctx.strokeStyle="rgba(255,212,71,0.8)";ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.roundRect?ctx.roundRect(tx,ty,tw,th,8):ctx.rect(tx,ty,tw,th);ctx.fill();ctx.stroke();
-  ctx.textAlign="left";ctx.textBaseline="middle";
-  ctx.fillStyle="#ffd447";ctx.font="700 12px 'JetBrains Mono',monospace";ctx.fillText(l1,tx+10,ty+13);
-  ctx.fillStyle="#e6f2ef";ctx.font="500 11px 'JetBrains Mono',monospace";ctx.fillText(l2,tx+10,ty+27);
+  // label: a small-caps name and the distance, upright, just beyond the chevron, no box
+  const name=t.label.toUpperCase(),d=Math.round(dist/PX_PER_M)+" m";
+  ctx.font="600 10px 'JetBrains Mono',monospace";
+  if("letterSpacing" in ctx)ctx.letterSpacing="1.5px";
+  const w1=ctx.measureText(name).width;
+  ctx.font="500 15px 'JetBrains Mono',monospace";const w2=ctx.measureText(d).width;
+  const tw=Math.max(w1,w2),th=30,off=24+Math.abs(ux)*tw/2+Math.abs(uy)*th/2;
+  const cx=clamp(ax+ux*off,tw/2+12,W-tw/2-12),cy=clamp(ay+uy*off,80,H-th);
+  ctx.textAlign="center";ctx.textBaseline="middle";ctx.shadowColor="rgba(2,16,22,0.9)";ctx.shadowBlur=5;
+  ctx.font="600 10px 'JetBrains Mono',monospace";ctx.fillStyle="rgba("+gold+",0.95)";ctx.fillText(name,cx,cy-8);
+  if("letterSpacing" in ctx)ctx.letterSpacing="0px";
+  ctx.font="500 15px 'JetBrains Mono',monospace";ctx.fillStyle="#eef6f3";ctx.fillText(d,cx,cy+8);
   ctx.restore();
 }
 
