@@ -1,11 +1,6 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="A top-down sailing game with real sail, rudder, wind and balance physics.">
 <title>Close Hauled</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2064%2064%22%3E%3Crect%20width=%2264%22%20height=%2264%22%20rx=%2214%22%20fill=%22%230e4d5f%22/%3E%3Cpath%20d=%22M0%2050q8-5%2016%200t16%200%2016%200%2016%200v14H0z%22%20fill=%22%23082f3d%22/%3E%3Cpath%20d=%22M32%209v33H16z%22%20fill=%22%23f4efe2%22/%3E%3Cpath%20d=%22M35%2017v25h15z%22%20fill=%22%23e8a33d%22/%3E%3Cpath%20d=%22M12%2046h40l-6%208H18z%22%20fill=%22%23f4efe2%22/%3E%3C/svg%3E">
+<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
@@ -237,9 +232,6 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 }
 @media (prefers-reduced-motion:reduce){.mode,.toast{transition:none}}
 </style>
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}</style>
-</head>
-<body>
 
 <canvas id="sea" tabindex="0" aria-label="Sailing game view"></canvas>
 <div id="light" aria-hidden="true"></div>
@@ -472,6 +464,10 @@ function integrate(b,F,dt){
   b.h=wrap(b.h+yaw*dt);
   const fx=Math.sin(b.h),fy=-Math.cos(b.h),rx=Math.cos(b.h),ry=Math.sin(b.h);
   b.x+=(b.u*fx+b.v*rx)*dt; b.y+=(b.u*fy+b.v*ry)*dt;
+  if(b.kx||b.ky){                                 // rebound drift after a collision, fading quickly
+    b.x+=b.kx*dt;b.y+=b.ky*dt;const k=Math.exp(-3.5*dt);b.kx*=k;b.ky*=k;
+    if(Math.abs(b.kx)+Math.abs(b.ky)<1){b.kx=0;b.ky=0;}
+  }
 }
 // Heel (radians, + = starboard side down). Sail side-force and crew weight against the hull's own stability,
 // which peaks at 45° and fades after that, so a big enough push tips the boat over.
@@ -1456,14 +1452,25 @@ function stepAI(ai,dt){
 // keep a boat out of rocks, the island, moored boats and marks; returns what it hit
 function bounceOff(b){
   let hit=null;
-  for(const o of S.obstacles){
-    const dx=b.x-o.x,dy=b.y-o.y,d=Math.hypot(dx,dy),min=o.r+13;
-    if(d<min){const nx=dx/(d||1),ny=dy/(d||1);b.x=o.x+nx*min;b.y=o.y+ny*min;b.u*=-0.25;b.v=0;hit=o;}
-  }
-  if(S.mode==="race")for(const m of MARKS){
-    const dx=b.x-m.x,dy=b.y-m.y,d=Math.hypot(dx,dy),min=23;
-    if(d<min){const nx=dx/(d||1),ny=dy/(d||1);b.x=m.x+nx*min;b.y=m.y+ny*min;b.u*=-0.25;b.v=0;hit={kind:"mark"};}
-  }
+  // Push the boat clear of the contact point and give it a firm shove outward along the
+  // contact normal, so a collision rebounds rather than leaving the boat stuck against it.
+  const push=(cx,cy,min,extra,kick,kind)=>{
+    const dx=b.x-cx,dy=b.y-cy,d=Math.hypot(dx,dy);
+    if(d>=min)return false;
+    const nx=d>0.01?dx/d:-Math.sin(b.h),ny=d>0.01?dy/d:Math.cos(b.h);
+    b.x=cx+nx*(min+extra);b.y=cy+ny*(min+extra);
+    const fx=Math.sin(b.h),fy=-Math.cos(b.h),rx=Math.cos(b.h),ry=Math.sin(b.h);
+    const vx=b.u*fx+b.v*rx,vy=b.u*fy+b.v*ry;     // world velocity
+    const vn=vx*nx+vy*ny;                        // along the normal (negative = into it)
+    const tx=vx-vn*nx,ty=vy-vn*ny;               // sliding component, damped
+    const out=Math.max(kick,-vn*0.6);            // rebound speed away from the obstacle
+    const wx=tx*0.5+nx*out,wy=ty*0.5+ny*out;
+    b.u=wx*fx+wy*fy;b.v=wx*rx+wy*ry;
+    b.kx=nx*kick*1.1;b.ky=ny*kick*1.1;          // plus a shove that carries the boat clear
+    return true;
+  };
+  for(const o of S.obstacles)if(push(o.x,o.y,o.r+13,6,38))hit=o;
+  if(S.mode==="race")for(const m of MARKS)if(push(m.x,m.y,23,3,20))hit={kind:"mark"};
   return hit;
 }
 // ---- right of way ----
@@ -3263,5 +3270,3 @@ requestAnimationFrame(frame);
 $("goOpen").focus();
 })();
 </script>
-</body>
-</html>
