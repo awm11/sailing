@@ -14,7 +14,7 @@
 :root{
   --sea:#0e4d5f;
   --sea-deep:#082f3d;
-  --panel:rgba(5,27,36,0.84);
+  --panel:rgba(5,27,36,0.9);
   --panel-line:rgba(160,214,214,0.18);
   --ink:#e6f2ef;
   --muted:#8db4b4;
@@ -48,7 +48,7 @@ button{font:inherit;color:inherit}
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));gap:12px}
 .row{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
 .row.top{align-items:flex-start}
-.panel{background:var(--panel);border:1px solid var(--panel-line);border-radius:10px;padding:10px 12px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.panel{background:var(--panel);border:1px solid var(--panel-line);border-radius:10px;padding:10px 12px}  /* no backdrop blur: re-blurring the moving sea every frame is costly */
 .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
 #status{min-width:200px;max-width:340px}
 #statusMain{font-family:var(--mono);font-weight:700;font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
@@ -254,6 +254,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
       <span><kbd>N</kbd></span><span>Sound on / off</span>
       <span><kbd>H</kbd></span><span>Coaching tips on / off</span>
       <span><kbd>F</kbd></span><span>Show frame rate</span>
+      <span><kbd>B</kbd></span><span>Graphics benchmark (about 25 seconds)</span>
       <span><kbd>R</kbd></span><span>Restart this mode</span>
       <span><kbd>M</kbd></span><span>Back to menu</span>
     </div>
@@ -577,7 +578,8 @@ window.addEventListener("keydown",e=>{
   else if(c==="KeyT"&&!S.paused){S.auto=!S.auto;toast(S.auto?"Auto-trim on":"Auto-trim off","");}
   else if(c==="KeyI"){S.invert=!S.invert;try{localStorage.setItem("closeHauledInvert",S.invert?"1":"0");}catch(e){}toast(S.invert?"Swipe reversed":"Swipe normal","");}
   else if(c==="KeyN"){Snd.on=!Snd.on;try{localStorage.setItem("closeHauledSound",Snd.on?"1":"0");}catch(e){}toast(Snd.on?"Sound on":"Sound off","");}
-  else if(c==="KeyF"){$("perf").hidden=!$("perf").hidden;}
+  else if(c==="KeyF"){$("perf").hidden=!$("perf").hidden;$("perf").style.whiteSpace="";}
+  else if(c==="KeyB"&&S.mode!=="menu"&&!bench)startBench();
   else if(c==="KeyH"){S.tips=!S.tips;document.getElementById("tipPanel").style.visibility=S.tips?"visible":"hidden";}
 });
 window.addEventListener("keyup",e=>keys.delete(e.code));
@@ -1189,10 +1191,15 @@ function stepOpen(b,dt,px,py){
 // ════════════════════════════════════════════════════════════════════
 const cv=$("sea"),ctx=cv.getContext("2d");
 let W=0,H=0,DPR=1;
-// Graphics quality: 2 = everything, 1 = fewer water layers, 0 = plainest, -1 = plainest at reduced resolution.
-// It steps down by itself if frames keep running slow, and back up if they run fast for a while (main loop).
-let GQ=2,slowT=0,fastT=0,warmT=0;const gqFail={};
-function resize(){DPR=Math.min(GQ<0?1.5:2,window.devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);}
+// Graphics quality, stepped down by itself if frames keep running slow and back up if they run fast for a
+// while (main loop). Resolution goes first, because on most graphics chips the number of pixels matters far
+// more than any one effect:  2 = everything at 2×,  1 = everything at 1.5×,  0 = fewer water layers at 1.5×,
+// -1 = plainest at 1.25×.  EQ is the effects level that goes with it (2 full, 1 fewer, 0 plain).
+let GQ=2,EQ=2,slowT=0,fastT=0,warmT=0;const gqFail={};
+function setGQ(q){GQ=q;EQ=q>=1?2:q===0?1:0;resize();}
+// Feature switches, used by the benchmark (B) to measure what each part of the picture costs
+const FX={depth:1,chop:1,gusts:1,streaks:1,crests:1,glitter:1,shallows:1,kelp:1,wakes:1,scene:1,light:1};
+function resize(){DPR=Math.min([1.25,1.5,1.5,2][GQ+1],window.devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);}
 window.addEventListener("resize",resize);resize();
 
 function worldTransform(){
@@ -1205,13 +1212,36 @@ function makeTile(n,paint,res=TEX_RES){const c=document.createElement("canvas");
   const g=c.getContext("2d");g.scale(res,res);paint(g,n,res);return c;}
 const rnd=(()=>{let s=7;return()=>(s=(s*16807)%2147483647)/2147483647;})();
 // fine chop: lots of little light and dark ripple facets, wrapped so the tile repeats seamlessly
-const TEX_CHOP=makeTile(256,(g,n)=>{
-  for(let i=0;i<900;i++){
-    const x=rnd()*n,y=rnd()*n,rx=1.2+rnd()*3.2,ry=0.5+rnd()*0.8,a=rnd()*Math.PI,lt=rnd()<0.5;
-    g.fillStyle=lt?"rgba(215,245,245,"+(0.05+rnd()*0.09).toFixed(3)+")":"rgba(0,18,30,"+(0.06+rnd()*0.10).toFixed(3)+")";
-    for(const ox of [-n,0,n])for(const oy of [-n,0,n]){g.beginPath();g.ellipse(x+ox,y+oy,rx,ry,a,0,TAU);g.fill();}
-  }
-});
+// The ripples are painted straight onto a tile at the exact pixel size they appear on screen, so the
+// browser only has to copy it (no scaling or smoothing per pixel, which was the costliest part of the sea).
+const CHOP_DOTS=(()=>{const r=(()=>{let s=11;return()=>(s=(s*16807)%2147483647)/2147483647;})(),out=[];
+  for(let i=0;i<900;i++){const x=r()*256,y=r()*256,rx=1.2+r()*3.2,ry=0.5+r()*0.8,a=r()*Math.PI,lt=r()<0.5;
+    out.push([x,y,rx,ry,a,lt?"rgba(215,245,245,"+(0.05+r()*0.09).toFixed(3)+")":"rgba(0,18,30,"+(0.06+r()*0.10).toFixed(3)+")"]);}
+  return out;})();
+const CHOP_TILES={};
+// a ripple pattern whose tile covers `world` units, drawn at `pxPerUnit` device pixels per unit
+function chopPattern(world,pxPerUnit){
+  const N=Math.max(16,Math.round(world*pxPerUnit)),key=world+":"+N;
+  if(CHOP_TILES[key])return CHOP_TILES[key];
+  const c=document.createElement("canvas");c.width=c.height=N;const g=c.getContext("2d"),k=N/256;
+  g.scale(k,k);
+  for(const [x,y,rx,ry,a,col] of CHOP_DOTS){g.fillStyle=col;
+    for(const ox of [-256,0,256])for(const oy of [-256,0,256]){g.beginPath();g.ellipse(x+ox,y+oy,rx,ry,a,0,TAU);g.fill();}}
+  const p=ctx.createPattern(c,"repeat");p.N=N;
+  if(Object.keys(CHOP_TILES).length>8)for(const k2 in CHOP_TILES)delete CHOP_TILES[k2];
+  return CHOP_TILES[key]=p;
+}
+// fill the view with a ripple layer anchored at world offset (ox,oy), copied 1:1 in device pixels
+function chopFill(world,ox,oy,alpha,clipBox){
+  const ppu=S.zoom*DPR,p=chopPattern(world,ppu),N=p.N;
+  const ax=DPR*(W/2+(ox-S.cam.x)*S.zoom),ay=DPR*(H/2+(oy-S.cam.y)*S.zoom);
+  p.setTransform(new DOMMatrix([1,0,0,1,Math.round(((ax%N)+N)%N),Math.round(((ay%N)+N)%N)]));
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);
+  ctx.globalAlpha=alpha;ctx.fillStyle=p;
+  if(clipBox){const [x,y,w,h]=clipBox;ctx.fillRect(DPR*(W/2+(x-S.cam.x)*S.zoom),DPR*(H/2+(y-S.cam.y)*S.zoom),w*ppu,h*ppu);}
+  else ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.restore();
+}
 // smooth value noise: big soft patches of greener (shallower) and darker (deeper) water
 const TEX_DEPTH=makeTile(64,(g,n)=>{   // smooth, so low resolution is fine
   const G=6,v=[];for(let i=0;i<G*G;i++)v.push(rnd());
@@ -1219,8 +1249,9 @@ const TEX_DEPTH=makeTile(64,(g,n)=>{   // smooth, so low resolution is fine
   for(let y=0;y<n;y++)for(let x=0;x<n;x++){
     const fx=x/n*G,fy=y/n*G,i=Math.floor(fx),j=Math.floor(fy),u=sm(fx-i),w=sm(fy-j);
     const d=(V(i,j)*(1-u)+V(i+1,j)*u)*(1-w)+(V(i,j+1)*(1-u)+V(i+1,j+1)*u)*w-0.5,o=(y*n+x)*4;
-    if(d>0){im.data[o]=70;im.data[o+1]=175;im.data[o+2]=165;im.data[o+3]=d*120;}
-    else{im.data[o]=0;im.data[o+1]=8;im.data[o+2]=22;im.data[o+3]=-d*150;}
+    // the base sea colour (#0f566b) with the patch colour already blended in, so the tile is opaque
+    const [cr,cg,cb,a]=d>0?[70,175,165,d*120/255]:[0,8,22,-d*150/255];
+    im.data[o]=15+(cr-15)*a;im.data[o+1]=86+(cg-86)*a;im.data[o+2]=107+(cb-107)*a;im.data[o+3]=255;
   }
   g.putImageData(im,0,0);
 },1);
@@ -1250,33 +1281,33 @@ function viewRect(m){const z=S.zoom,vw=W/z,vh=H/z;return {x0:S.cam.x-vw/2-m,y0:S
 
 function drawWater(){
   ctx.setTransform(DPR,0,0,DPR,0,0);
-  ctx.fillStyle="#0f566b";ctx.fillRect(0,0,W,H);
+  if(EQ<=0||!FX.depth){ctx.fillStyle="#0f566b";ctx.fillRect(0,0,W,H);}
   worldTransform();
   const {x0,y0,x1,y1}=viewRect(80),RW=x1-x0,RH=y1-y0;
   const f=S.wind.from,tx=-Math.sin(f),ty=Math.cos(f),qx=-ty,qy=tx;
   const windK=clamp(S.wind.speed/180,0.25,1);
   // big soft patches of colour, fixed to the sea bed
-  if(GQ>0)patFill(pat("depth",TEX_DEPTH),40,0,0,x0,y0,RW,RH,1);
+  if(EQ>0&&FX.depth)patFill(pat("depth",TEX_DEPTH),40,0,0,x0,y0,RW,RH,1);    // opaque: also paints the base colour
   // fine chop: two layers drifting downwind at different speeds, so the surface shimmers
-  const cp=pat("chop",TEX_CHOP),cx0=S.chopX||0,cy0=S.chopY||0;
-  patFill(cp,1,cx0%256,cy0%256,x0,y0,RW,RH,0.22+0.3*windK);
-  if(GQ>1)patFill(cp,1.9,(cx0*0.5+137)%486.4,(cy0*0.5+71)%486.4,x0,y0,RW,RH,0.12+0.18*windK);
+  const cx0=S.chopX||0,cy0=S.chopY||0;
+  if(FX.chop)chopFill(256,cx0,cy0,0.22+0.3*windK);
+  if(EQ>1&&FX.chop)chopFill(486.4,cx0*0.5+137,cy0*0.5+71,0.12+0.18*windK);
   // gusts: darker, rougher patches ("cat's paws"), with extra chop inside
-  for(const gu of S.gusts){
+  if(FX.gusts)for(const gu of S.gusts){
     if(gu.x+gu.r<x0||gu.x-gu.r>x1||gu.y+gu.r<y0||gu.y-gu.r>y1)continue;
     const k=gu.s/0.4;
     const rg=ctx.createRadialGradient(gu.x,gu.y,0,gu.x,gu.y,gu.r);
     rg.addColorStop(0,"rgba(2,22,34,"+(0.42*k).toFixed(3)+")");rg.addColorStop(0.6,"rgba(2,22,34,"+(0.22*k).toFixed(3)+")");rg.addColorStop(1,"rgba(2,22,34,0)");
     ctx.fillStyle=rg;ctx.beginPath();ctx.arc(gu.x,gu.y,gu.r,0,TAU);ctx.fill();
-    if(GQ<2)continue;
+    if(EQ<2)continue;
     ctx.save();ctx.beginPath();ctx.arc(gu.x,gu.y,gu.r*0.6,0,TAU);ctx.clip();
-    patFill(cp,0.75,(cx0*1.5)%192,(cy0*1.5)%192,gu.x-gu.r*0.6,gu.y-gu.r*0.6,gu.r*1.2,gu.r*1.2,0.35*k);
+    chopFill(192,cx0*1.5,cy0*1.5,0.35*k,[gu.x-gu.r*0.6,gu.y-gu.r*0.6,gu.r*1.2,gu.r*1.2]);
     ctx.restore();
   }
   // wind streaks along the wind
   const sc=210;
   ctx.lineCap="round";ctx.strokeStyle="#cfe9ea";ctx.lineWidth=1.4;
-  for(let i=Math.floor(x0/sc);i<=Math.ceil(x1/sc);i++)for(let j=Math.floor(y0/sc);j<=Math.ceil(y1/sc);j++){
+  if(FX.streaks)for(let i=Math.floor(x0/sc);i<=Math.ceil(x1/sc);i++)for(let j=Math.floor(y0/sc);j<=Math.ceil(y1/sc);j++){
     const h1=hash(i+91,j),h2=hash2(i,j+57);
     const p=(S.streakPh+h1)%1,len=70+h2*110;
     const cx=i*sc+h2*sc+tx*(p-0.5)*170,cy=j*sc+hash(j,i+5)*sc+ty*(p-0.5)*170;
@@ -1286,8 +1317,10 @@ function drawWater(){
   ctx.globalAlpha=1;
   // wave crests across the wind, rolling downwind: a lit crest with a darker trough just downwind of it.
   // Strokes are grouped into a few brightness levels so each level is one path.
-  const cell=54,NB=6,lit=[],dark=[],caps=new Path2D(),foam=new Path2D();
-  for(let k=0;k<NB;k++){lit.push(new Path2D());dark.push(new Path2D());}
+  if(FX.crests){
+  // Each crest is drawn as its own small stroke. (Merging them into a few big paths saves a little script
+  // time but is very slow on many graphics chips, which can't draw a big curved path directly.)
+  const cell=54,crests=[],caps=[],bubbles=[];
   for(let i=Math.floor(x0/cell);i<=Math.ceil(x1/cell);i++)for(let j=Math.floor(y0/cell);j<=Math.ceil(y1/cell);j++){
     const h1=hash(i,j),h2=hash2(i,j);
     const p=(S.wavePh+h1)%1;
@@ -1295,30 +1328,32 @@ function drawWater(){
     cx+=tx*(p-0.5)*46;cy+=ty*(p-0.5)*46;
     const g2=windAt(cx,cy).gust, len=(10+16*h1)*(1+g2);
     const a=Math.sin(p*Math.PI)*(0.12+0.2*h2)*(1+g2*1.5);
-    const bin=clamp(Math.floor(a/0.6*NB),0,NB-1)||0;     // lulls (negative gusts) can make a < 0
+    if(!(a>0.01))continue;                                  // lulls (negative gusts) can make a < 0
     const ax=cx-qx*len/2-tx*len*0.12,ay=cy-qy*len/2-ty*len*0.12,bx=cx+qx*len/2-tx*len*0.12,by=cy+qy*len/2-ty*len*0.12;
     const mx=cx+tx*len*0.18,my=cy+ty*len*0.18;
-    lit[bin].moveTo(ax,ay);lit[bin].quadraticCurveTo(mx,my,bx,by);
-    dark[bin].moveTo(ax+tx*3,ay+ty*3);dark[bin].quadraticCurveTo(mx+tx*3,my+ty*3,bx+tx*3,by+ty*3);
+    crests.push([Math.min(0.6,a),ax,ay,mx,my,bx,by]);
     // whitecaps: in a fresh breeze the bigger crests break into foam, leaving a trail of bubbles
     const kn=S.wind.speed*(1+g2)/PX_PER_KN;
     if(kn>11.5&&h2>1.05-(kn-11.5)*0.06&&p>0.3&&p<0.85){
       // the crest curls over into a short band of white water, then breaks up into bubbles behind it
       const q=(p-0.3)/0.55,sh=0.5-q*0.25;
-      caps.moveTo(cx-qx*len*sh-tx*len*0.1,cy-qy*len*sh-ty*len*0.1);
-      caps.quadraticCurveTo(mx-tx*1.5,my-ty*1.5,cx+qx*len*sh-tx*len*0.1,cy+qy*len*sh-ty*len*0.1);
-      for(let d=0;d<5;d++){const u=(hash(i+d,j)-0.5)*len*0.7,back=2+d*1.7+q*9,bx2=mx+qx*u-tx*back,by2=my+qy*u-ty*back,br=0.5+0.9*(1-q)*hash2(j,i+d);
-        foam.moveTo(bx2+br,by2);foam.arc(bx2,by2,br,0,TAU);}
+      caps.push([cx-qx*len*sh-tx*len*0.1,cy-qy*len*sh-ty*len*0.1,mx-tx*1.5,my-ty*1.5,cx+qx*len*sh-tx*len*0.1,cy+qy*len*sh-ty*len*0.1]);
+      for(let d=0;d<5;d++){const u=(hash(i+d,j)-0.5)*len*0.7,back=2+d*1.7+q*9;
+        bubbles.push([mx+qx*u-tx*back,my+qy*u-ty*back,0.5+0.9*(1-q)*hash2(j,i+d)]);}
     }
   }
-  ctx.lineWidth=2.2;ctx.strokeStyle="#021926";
-  for(let k=0;k<NB;k++){ctx.globalAlpha=(k+0.5)/NB*0.6*0.55;ctx.stroke(dark[k]);}
-  ctx.lineWidth=1.8;ctx.strokeStyle="#d4eeee";
-  for(let k=0;k<NB;k++){ctx.globalAlpha=(k+0.5)/NB*0.6;ctx.stroke(lit[k]);}
-  ctx.globalAlpha=0.6;ctx.strokeStyle="#f2fbfa";ctx.lineWidth=2.6;ctx.stroke(caps);
-  ctx.globalAlpha=0.45;ctx.fillStyle="#f2fbfa";ctx.fill(foam);
+  ctx.lineCap="round";
+  ctx.lineWidth=2.2;ctx.strokeStyle="#021926";             // darker trough just downwind of each crest
+  for(const [a,ax,ay,mx,my,bx,by] of crests){ctx.globalAlpha=a*0.55;ctx.beginPath();ctx.moveTo(ax+tx*3,ay+ty*3);ctx.quadraticCurveTo(mx+tx*3,my+ty*3,bx+tx*3,by+ty*3);ctx.stroke();}
+  ctx.lineWidth=1.8;ctx.strokeStyle="#d4eeee";             // the lit crest
+  for(const [a,ax,ay,mx,my,bx,by] of crests){ctx.globalAlpha=a;ctx.beginPath();ctx.moveTo(ax,ay);ctx.quadraticCurveTo(mx,my,bx,by);ctx.stroke();}
+  ctx.globalAlpha=0.6;ctx.strokeStyle="#f2fbfa";ctx.lineWidth=2.6;
+  for(const [ax,ay,mx,my,bx,by] of caps){ctx.beginPath();ctx.moveTo(ax,ay);ctx.quadraticCurveTo(mx,my,bx,by);ctx.stroke();}
+  ctx.globalAlpha=0.45;ctx.fillStyle="#f2fbfa";
+  for(const [x,y,r] of bubbles){ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();}
   ctx.globalAlpha=1;
-  if(GQ>0)drawGlitter(x0+80,y0+80,x1-80,y1-80,windK);
+  }
+  if(EQ>0&&FX.glitter)drawGlitter(x0+80,y0+80,x1-80,y1-80,windK);
 }
 // Sun glitter: tiny twinkling highlights where wave faces catch the sun, densest towards the
 // glare in the top-left of the view.
@@ -1403,7 +1438,7 @@ function drawFixedRefs(){
   }
   // kelp beds
   const KC=KELP_CELL;
-  for(let i=Math.floor(x0/KC)-1;i<=Math.ceil(x1/KC);i++)for(let j=Math.floor(y0/KC)-1;j<=Math.ceil(y1/KC);j++){
+  if(FX.kelp)for(let i=Math.floor(x0/KC)-1;i<=Math.ceil(x1/KC);i++)for(let j=Math.floor(y0/KC)-1;j<=Math.ceil(y1/KC);j++){
     const bd=kelpBed(i,j);if(bd)drawKelpBed(bd.cx,bd.cy,bd.seed,kelpGeom(i,j));
   }
   // lobster-pot floats: bob in place, never drift
@@ -1478,10 +1513,13 @@ function drawKelpBed(cx,cy,seed,geom){
   const flow=hash(seed,1)*TAU, fx=Math.cos(flow), fy=Math.sin(flow), nx=-fy, ny=fx;
   // murky shadow under the fronds: the same shape as the area that slows you down
   if(geom){
-    ctx.lineCap="round";ctx.beginPath();
-    for(const [ax,ay,bx,by] of geom.fr){ctx.moveTo(ax,ay);ctx.lineTo(bx,by);}
-    ctx.strokeStyle="rgba(34,48,18,0.16)";ctx.lineWidth=KELP_R1*2;ctx.stroke();
-    ctx.strokeStyle="rgba(34,48,18,0.14)";ctx.lineWidth=KELP_R0*2;ctx.stroke();
+    // one simple stroke per frond (easy for graphics chips); where fronds overlap the water gets darker,
+    // which is also where the drag is strongest
+    ctx.lineCap="round";ctx.globalAlpha=0.09;ctx.strokeStyle="rgb(34,48,18)";ctx.lineWidth=KELP_R1*2;
+    for(const [ax,ay,bx,by] of geom.fr){ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();}
+    ctx.globalAlpha=0.07;ctx.lineWidth=KELP_R0*2;
+    for(const [ax,ay,bx,by] of geom.fr){ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();}
+    ctx.globalAlpha=1;
   }
   const plants=6+Math.floor(hash(seed,2)*4);
   ctx.lineCap="round";ctx.lineJoin="round";
@@ -1659,11 +1697,11 @@ function drawShallows(){
     const g=ctx.createRadialGradient(o.x,o.y,isl?o.r:o.r*0.6,o.x,o.y,R);
     g.addColorStop(0,"rgba(118,214,196,"+(isl?0.6:0.45)+")");g.addColorStop(0.4,"rgba(70,172,172,0.3)");g.addColorStop(1,"rgba(40,130,150,0)");
     ctx.fillStyle=g;ctx.beginPath();ctx.arc(o.x,o.y,R,0,TAU);ctx.fill();
-    if(GQ>0)for(const rr of isl?(GQ>1?[0.5,0.68,0.85]:[0.7]):[0.8]){           // nested clips fade the caustics out towards deeper water
+    if(EQ>0)for(const rr of isl?(EQ>1?[0.5,0.68,0.85]:[0.7]):[0.8]){           // nested clips fade the caustics out towards deeper water
       const cr=R*rr;
       ctx.save();ctx.beginPath();ctx.arc(o.x,o.y,cr,0,TAU);ctx.clip();
       patFill(cau,1.15,t*7%147.2,t*4%147.2,o.x-cr,o.y-cr,cr*2,cr*2,isl?0.11:0.2,"lighter");
-      if(isl&&GQ>1)patFill(cau,1.7,-t*5%217.6,t*6%217.6,o.x-cr,o.y-cr,cr*2,cr*2,0.08,"lighter");
+      if(isl&&EQ>1)patFill(cau,1.7,-t*5%217.6,t*6%217.6,o.x-cr,o.y-cr,cr*2,cr*2,0.08,"lighter");
       ctx.restore();
     }
     // surf: waves roll in and break on the shore, leaving a band of foam that comes and goes
@@ -2636,12 +2674,13 @@ function frame(now){
   // frames slower than ~40 fps for a couple of seconds: step the graphics down a level
   // (very long gaps are a hidden tab or a pause in the browser, not slow drawing)
   // (ignores the first few seconds, while fonts load and the page settles)
-  if(raw<0.5&&(warmT+=raw)>4){
-    if(raw>0.03)slowT+=raw;else slowT=Math.max(0,slowT-raw*0.5);
-    fastT=raw<0.02?fastT+raw:0;
+  if(bench)benchFrame(raw);
+  else if(raw<0.5&&(warmT+=raw)>4){
+    if(raw>0.0182)slowT+=raw;else slowT=Math.max(0,slowT-raw*0.5);    // slower than ~55 fps
+    fastT=raw<0.0175?fastT+raw:0;
     // a level that has proved too slow twice is not tried again, so quality doesn't keep flipping
-    if(slowT>3&&GQ>-1){gqFail[GQ]=(gqFail[GQ]||0)+1;GQ--;slowT=0;fastT=0;if(GQ<0)resize();}
-    else if(fastT>15&&GQ<2&&(gqFail[GQ+1]||0)<2){GQ++;fastT=0;if(GQ===0)resize();}
+    if(slowT>3&&GQ>-1){gqFail[GQ]=(gqFail[GQ]||0)+1;setGQ(GQ-1);slowT=0;fastT=0;}
+    else if(fastT>15&&GQ<2&&(gqFail[GQ+1]||0)<2){setGQ(GQ+1);fastT=0;}
   }
   const live=S.mode!=="menu"&&!S.paused&&!(S.race&&S.race.stage==="done");
   // physics: advance by exactly the time since the last frame, in equal sub-steps of at most 1/120 s,
@@ -2664,16 +2703,16 @@ function frame(now){
   drawWater();
   if(S.mode!=="menu"){
     worldTransform();
-    drawShallows();
+    if(FX.shallows)drawShallows();
     drawFixedRefs();
     if(S.mode==="race")drawCourse();
     drawTrail();
     if(live){sampleWakes();sprayFrom(S.boat,S.F,dt);if(S.mode==="race")for(const ai of S.ais)sprayFrom(ai.b,ai.F,dt);}
-    drawWakes();
+    if(FX.wakes)drawWakes();
     drawFx("ring");
     if(!S.boat.capsized)drawMotion();
     drawSwipeAxis();
-    drawScene();
+    if(FX.scene)drawScene();
     drawFx("drop");
     drawEdgeArrow();
     drawCountdown();
@@ -2682,10 +2721,52 @@ function frame(now){
   }
   // frame-rate readout (F)
   perf.n++;perf.ms+=performance.now()-t0;perf.t+=raw;
-  if(perf.t>=0.5){if(!$("perf").hidden)$("perf").textContent=Math.round(perf.n/perf.t)+" fps · drawing "+(perf.ms/perf.n).toFixed(1)+" ms · quality "+["low res","plain","medium","full"][GQ+1]+" · "+DPR+"×";perf.n=0;perf.ms=0;perf.t=0;}
+  if(perf.t>=0.5){if(!$("perf").hidden&&!bench&&$("perf").style.whiteSpace!=="pre")$("perf").textContent=Math.round(perf.n/perf.t)+" fps · drawing "+(perf.ms/perf.n).toFixed(1)+" ms · quality "+["plain","medium","full","full"][GQ+1]+" · "+DPR+"×";perf.n=0;perf.ms=0;perf.t=0;}
   requestAnimationFrame(frame);
 }
 const perf={n:0,ms:0,t:0};
+// Benchmark (B): freezes the game, then turns each part of the picture off in turn for a moment and
+// measures the frame rate, so the costly parts on this computer show up. Results stay on screen.
+let bench=null;
+const BENCH=[["everything on",{}],["no deep/shallow patches",{depth:0}],["no ripple texture",{chop:0}],["no gust patches",{gusts:0}],
+  ["no wind streaks",{streaks:0}],["no wave crests",{crests:0}],["no sun glitter",{glitter:0}],["no shallows/surf",{shallows:0}],
+  ["no seaweed",{kelp:0}],["no wakes",{wakes:0}],["no boats/rocks/buoys",{scene:0}],
+  ["bare sea only",{depth:0,chop:0,gusts:0,streaks:0,crests:0,glitter:0,shallows:0,kelp:0,wakes:0,scene:0,light:0}],["everything at 1.5×",{dpr:1.5}],["everything at 1×",{dpr:1}]];
+// name of the graphics chip the browser reports (shows whether drawing is hardware-accelerated)
+function gpuName(){
+  try{const g=document.createElement("canvas").getContext("webgl");if(!g)return "no WebGL (likely software drawing)";
+    const e=g.getExtension("WEBGL_debug_renderer_info");return String(e?g.getParameter(e.UNMASKED_RENDERER_WEBGL):g.getParameter(g.RENDERER)).slice(0,60);}
+  catch(e){return "unknown";}
+}
+function startBench(){
+  bench={i:-1,t:0,n:0,res:[],GQ,paused:S.paused};
+  S.paused=true;show("pause",false);setGQ(2);
+  $("perf").hidden=false;$("perf").style.whiteSpace="pre";$("perf").textContent="Benchmark running…";
+  benchNext();
+}
+function benchApply(cfg){
+  for(const k in FX)FX[k]=k in cfg?cfg[k]:1;
+  $("light").hidden=!FX.light;
+  const want=Math.min(cfg.dpr||2,window.devicePixelRatio||1);
+  if(DPR!==want){DPR=want;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);}
+}
+function benchNext(){
+  bench.i++;bench.t=0;bench.n=0;
+  if(bench.i>=BENCH.length){
+    benchApply({});setGQ(bench.GQ);S.paused=bench.paused;show("pause",S.paused);
+    const base=bench.res[0][1];
+    $("perf").textContent="Benchmark ("+Math.round(W)+"×"+Math.round(H)+", screen "+(window.devicePixelRatio||1)+"×)\nGraphics: "+gpuName()+"\n"+
+      bench.res.map(([n,f])=>(n+"").padEnd(26)+String(Math.round(f)).padStart(4)+" fps"+(n===BENCH[0][0]?"":"  ("+(f>=base?"+":"")+Math.round(f-base)+")")).join("\n")+"\nPress F to hide";
+    bench=null;slowT=0;fastT=0;return;
+  }
+  benchApply(BENCH[bench.i][1]);
+}
+function benchFrame(raw){
+  bench.t+=raw;
+  if(bench.t>0.4){bench.n++;bench.acc=(bench.acc||0)+raw;}        // skip the first moment after a switch
+  if(bench.t>2.1){bench.res.push([BENCH[bench.i][0],bench.n/(bench.acc||1)]);bench.acc=0;
+    $("perf").textContent="Benchmark running… "+(bench.i+1)+" / "+BENCH.length;benchNext();}
+}
 // menu backdrop: drifting water with gusts
 S.mode="menu";S.cam={x:0,y:0};initGusts();
 requestAnimationFrame(frame);
