@@ -33,6 +33,8 @@ html,body{height:100%;overflow:hidden}
 body{background:var(--sea-deep);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45}
 #sea{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none}
 /* sunlight over the sea: warm glare from the top left and darker edges, composited by the browser */
+#perf{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:30;pointer-events:none;
+  font:500 11px var(--mono);color:var(--ink);background:var(--panel);border:1px solid var(--panel-line);border-radius:6px;padding:3px 8px;white-space:nowrap}
 #light{position:fixed;inset:0;pointer-events:none;
   background:radial-gradient(ellipse 85% 75% at 10% -15%,rgba(255,226,168,0.20),rgba(255,226,168,0.06) 45%,rgba(255,226,168,0) 75%),
              radial-gradient(ellipse 75% 70% at 50% 50%,rgba(0,10,18,0) 55%,rgba(0,10,18,0.5) 100%);
@@ -165,6 +167,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 
 <canvas id="sea" tabindex="0" aria-label="Sailing game view"></canvas>
 <div id="light" aria-hidden="true"></div>
+<div id="perf" hidden></div>
 
 <div id="hud" hidden>
   <div class="row top">
@@ -250,6 +253,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
       <span><kbd>T</kbd></span><span>Auto-trim on / off</span>
       <span><kbd>N</kbd></span><span>Sound on / off</span>
       <span><kbd>H</kbd></span><span>Coaching tips on / off</span>
+      <span><kbd>F</kbd></span><span>Show frame rate</span>
       <span><kbd>R</kbd></span><span>Restart this mode</span>
       <span><kbd>M</kbd></span><span>Back to menu</span>
     </div>
@@ -573,6 +577,7 @@ window.addEventListener("keydown",e=>{
   else if(c==="KeyT"&&!S.paused){S.auto=!S.auto;toast(S.auto?"Auto-trim on":"Auto-trim off","");}
   else if(c==="KeyI"){S.invert=!S.invert;try{localStorage.setItem("closeHauledInvert",S.invert?"1":"0");}catch(e){}toast(S.invert?"Swipe reversed":"Swipe normal","");}
   else if(c==="KeyN"){Snd.on=!Snd.on;try{localStorage.setItem("closeHauledSound",Snd.on?"1":"0");}catch(e){}toast(Snd.on?"Sound on":"Sound off","");}
+  else if(c==="KeyF"){$("perf").hidden=!$("perf").hidden;}
   else if(c==="KeyH"){S.tips=!S.tips;document.getElementById("tipPanel").style.visibility=S.tips?"visible":"hidden";}
 });
 window.addEventListener("keyup",e=>keys.delete(e.code));
@@ -1079,7 +1084,14 @@ function stepAI(ai,dt){
   let F=sailForces(b,w.speed,w.from);
   const tgtSheet=bestBoom(Math.abs(F.awa))+(slow?0.55:0)+(Math.abs(b.heel)>0.38?0.3:0);
   b.sheet=clamp(approach(b.sheet,tgtSheet,1.4*dt),K.sheetMin,K.sheetMax);
-  b.crew=approach(b.crew,clamp(b.crew-b.heel*1.2-b.hv*0.35,-1,1),0.9*dt);
+  // Crew position: where the sail's heeling push would be balanced, plus a little correction for any heel
+  // left over, smoothed over a second or so. Like a real sailor they hold their spot and only shift when
+  // it is clearly wrong, instead of hunting in and out all the time.
+  const crewWant=clamp(-K.heelWind*F.side/K.crew-b.heel*1.6,-1,1);
+  ai.crewTgt=ai.crewTgt??b.crew;ai.crewTgt+=(crewWant-ai.crewTgt)*(1-Math.exp(-dt/0.7));
+  const off=ai.crewTgt-b.crew;
+  if(Math.abs(off)>0.07)ai.shifting=true;else if(Math.abs(off)<0.015)ai.shifting=false;
+  if(ai.shifting)b.crew=approach(b.crew,ai.crewTgt,1.2*dt);
   F=sailForces(b,w.speed,w.from);F.fu*=ai.skill;
   const px=b.x,py=b.y;
   integrate(b,F,dt);
@@ -1179,7 +1191,7 @@ const cv=$("sea"),ctx=cv.getContext("2d");
 let W=0,H=0,DPR=1;
 // Graphics quality: 2 = everything, 1 = fewer water layers, 0 = plainest, -1 = plainest at reduced resolution.
 // It steps down by itself if frames keep running slow, and back up if they run fast for a while (main loop).
-let GQ=2,slowT=0,fastT=0,warmT=0;
+let GQ=2,slowT=0,fastT=0,warmT=0;const gqFail={};
 function resize(){DPR=Math.min(GQ<0?1.5:2,window.devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);}
 window.addEventListener("resize",resize);resize();
 
@@ -1392,7 +1404,7 @@ function drawFixedRefs(){
   // kelp beds
   const KC=KELP_CELL;
   for(let i=Math.floor(x0/KC)-1;i<=Math.ceil(x1/KC);i++)for(let j=Math.floor(y0/KC)-1;j<=Math.ceil(y1/KC);j++){
-    const bd=kelpBed(i,j);if(bd)drawKelpBed(bd.cx,bd.cy,bd.seed);
+    const bd=kelpBed(i,j);if(bd)drawKelpBed(bd.cx,bd.cy,bd.seed,kelpGeom(i,j));
   }
   // lobster-pot floats: bob in place, never drift
   const PC=340,cols=["#ff5a4f","#ffd447","#f4f1e8","#4fc3ff"];
@@ -1422,24 +1434,55 @@ function kelpBed(i,j){
   if(Math.hypot(mx,my-150)<480)return null;   // keep the starting area clear
   return {cx,cy,seed,mx,my};
 }
-// 0 = clear water, 1 = right in the thick of a bed
-function kelpAt(x,y){
-  const i0=Math.floor(x/KELP_CELL),j0=Math.floor(y/KELP_CELL);let k=0;
-  for(let i=i0-1;i<=i0+1;i++)for(let j=j0-1;j<=j0+1;j++){
-    const bd=kelpBed(i,j);if(!bd)continue;
-    const d=Math.hypot(x-bd.mx,y-bd.my)/110;
-    if(d<1)k=Math.max(k,Math.min(1,(1-d)*1.8));
+// The fronds of a bed as straight lines (the same ones drawKelpBed draws, without their sway), with a
+// bounding box. The slowing effect comes from these, so it matches exactly what is drawn.
+const KELP_GEOM=new Map(),KELP_R0=9,KELP_R1=16;      // full drag within R0 of a frond, none beyond R1
+function kelpGeom(i,j){
+  const key=i+","+j;if(KELP_GEOM.has(key))return KELP_GEOM.get(key);
+  if(KELP_GEOM.size>3000)KELP_GEOM.clear();
+  const bd=kelpBed(i,j);let g=null;
+  if(bd){
+    const {cx,cy,seed}=bd,flow=hash(seed,1)*TAU,fx=Math.cos(flow),fy=Math.sin(flow),fr=[];
+    let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    const plants=6+Math.floor(hash(seed,2)*4);
+    for(let p=0;p<plants;p++){
+      const hx=cx+(hash(seed+p,3)-0.5)*130-fx*40, hy=cy+(hash2(seed,p+4)-0.5)*100-fy*40;
+      const fronds=3+Math.floor(hash(seed+p,5)*3);
+      for(let f=0;f<fronds;f++){
+        const len=70+hash(seed+p*7,f+6)*80, spread=(hash2(seed+p,f+7)-0.5)*0.7;
+        const ex=hx+Math.cos(flow+spread)*len, ey=hy+Math.sin(flow+spread)*len;
+        fr.push([hx,hy,ex,ey]);
+        x0=Math.min(x0,hx,ex);y0=Math.min(y0,hy,ey);x1=Math.max(x1,hx,ex);y1=Math.max(y1,hy,ey);
+      }
+    }
+    g={fr,x0:x0-KELP_R1,y0:y0-KELP_R1,x1:x1+KELP_R1,y1:y1+KELP_R1};
   }
-  return k;
+  KELP_GEOM.set(key,g);return g;
+}
+// 0 = clear water, 1 = right in the thick of a bed. One frond under the boat gives about half the drag;
+// two or more overlapping give the full amount.
+function kelpAt(x,y){
+  const i0=Math.floor(x/KELP_CELL),j0=Math.floor(y/KELP_CELL);let sum=0;
+  for(let i=i0-1;i<=i0+1;i++)for(let j=j0-1;j<=j0+1;j++){
+    const g=kelpGeom(i,j);if(!g||x<g.x0||x>g.x1||y<g.y0||y>g.y1)continue;
+    for(const [ax,ay,bx,by] of g.fr){
+      const dx=bx-ax,dy=by-ay,t=clamp(((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy),0,1),d=Math.hypot(x-ax-dx*t,y-ay-dy*t);
+      if(d<KELP_R1)sum+=d<KELP_R0?1:(KELP_R1-d)/(KELP_R1-KELP_R0);
+    }
+  }
+  return Math.min(1,sum*0.5);
 }
 // A kelp bed: plants anchored to the sea bed, their long fronds floating up and lying along the
 // surface, all streaming the same way in the tidal current and swaying slightly.
-function drawKelpBed(cx,cy,seed){
+function drawKelpBed(cx,cy,seed,geom){
   const flow=hash(seed,1)*TAU, fx=Math.cos(flow), fy=Math.sin(flow), nx=-fy, ny=fx;
-  // murky underwater shadow of the bed
-  const g=ctx.createRadialGradient(cx,cy,0,cx,cy,110);
-  g.addColorStop(0,"rgba(40,52,20,0.32)");g.addColorStop(1,"rgba(40,52,20,0)");
-  ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,110,0,TAU);ctx.fill();
+  // murky shadow under the fronds: the same shape as the area that slows you down
+  if(geom){
+    ctx.lineCap="round";ctx.beginPath();
+    for(const [ax,ay,bx,by] of geom.fr){ctx.moveTo(ax,ay);ctx.lineTo(bx,by);}
+    ctx.strokeStyle="rgba(34,48,18,0.16)";ctx.lineWidth=KELP_R1*2;ctx.stroke();
+    ctx.strokeStyle="rgba(34,48,18,0.14)";ctx.lineWidth=KELP_R0*2;ctx.stroke();
+  }
   const plants=6+Math.floor(hash(seed,2)*4);
   ctx.lineCap="round";ctx.lineJoin="round";
   for(let p=0;p<plants;p++){
@@ -1911,11 +1954,13 @@ function hullRing(P,z,scale){
 function boardTip(b){return boatFrame(b)(2,0,-17);}
 function swimmerPos(b){
   const c=b.cap,f={x:Math.sin(b.h),y:-Math.cos(b.h)},r={x:Math.cos(b.h),y:Math.sin(b.h)},sd=c.side;
-  const land={x:b.x-f.x*8+r.x*sd*20,y:b.y-f.y*8+r.y*sd*20};
-  const ctl={x:b.x-f.x*42,y:b.y-f.y*42};
-  const tip=boardTip(b),end={x:tip.x-r.x*sd*5,y:tip.y-r.y*sd*5};
-  const t=c.swim*c.swim*(3-2*c.swim),u=1-t;
-  return {x:u*u*land.x+2*u*t*ctl.x+t*t*end.x,y:u*u*land.y+2*u*t*ctl.y+t*t*end.y,z:0,land,end};
+  const sc=b.scale||1;
+  const land={x:b.x-f.x*8*sc+r.x*sd*20*sc,y:b.y-f.y*8*sc+r.y*sd*20*sc};
+  const tip=boardTip(b),end={x:tip.x-r.x*sd*5*sc,y:tip.y-r.y*sd*5*sc};
+  // a wide loop round the back of the boat, well clear of the transom and rudder (which reach ~34 aft)
+  const c1={x:land.x-f.x*55*sc+r.x*sd*12*sc,y:land.y-f.y*55*sc+r.y*sd*12*sc},c2={x:end.x-f.x*55*sc,y:end.y-f.y*55*sc};
+  const t=c.swim*c.swim*(3-2*c.swim),u=1-t,k0=u*u*u,k1=3*u*u*t,k2=3*u*t*t,k3=t*t*t;
+  return {x:k0*land.x+k1*c1.x+k2*c2.x+k3*end.x,y:k0*land.y+k1*c1.y+k2*c2.y+k3*end.y,z:0,land,end};
 }
 function sailPoints(b,F,P){
   const ba=b.boomDraw,bl=27,mastA=8,zb=8.5,H=58;
@@ -2051,7 +2096,19 @@ function drawBoat3D(b,F){
   }});
   // a sailor standing on the centreboard on the far side of the hull is partly hidden behind it
   const ox=-Math.cos(b.h)*(b.cap?b.cap.side:1),oy=-Math.sin(b.h)*(b.cap?b.cap.side:1);
-  const behind=b.capsized&&b.cap.phase==="over"&&(ox*-0.2+oy*0.72)<0;
+  // Where a capsized sailor goes in the drawing order. On the centreboard (and while climbing back in)
+  // the sailor is on the high side and the sail on the low side, so being on the far side of the hull
+  // means being behind both. Once in the cockpit, the sailor is ordered against the sail instead.
+  let capAt=null;                        // "behind" | "mid" (after hull, before sail) | "front"
+  if(b.capsized){
+    const farSide=(ox*-0.2+oy*0.72)<0,c=b.cap;
+    if(c.phase==="over"||(c.phase==="popping"&&c.t/1.1<0.55))capAt=farSide?"behind":"front";
+    else if(c.phase==="popping"){
+      const hp=crewPose(b,P,0).hip,bm=lerp3(sp.tack,sp.clew,0.5),nr=q=>q.x*-0.2+q.y*0.72;
+      capAt=!over&&nr(hp)<nr(bm)?"mid":"front";
+    }else capAt="front";
+  }
+  const behind=capAt==="behind";
   if(behind)drawCapsizedCrew(b,P);
   items.sort((p,q)=>p.z-q.z).forEach(it=>it.draw());
   // sailor and sail: whichever is nearer the camera (further down-screen) is drawn last
@@ -2062,10 +2119,11 @@ function drawBoat3D(b,F){
     crewFirst=near(hp)<near(bm);
   }
   if(crewOn&&crewFirst)drawSeatedCrew(b,P,ra,sailorLook(b),sp);
+  if(capAt==="mid")drawCapsizedCrew(b,P);
   if(b.moored){drawMooredRig(b,P,mastBase,mastTop);if(b.cabin)drawOfficial(b,P);}
   else if(!over)drawRig(b,sp,mastBase,mastTop,F,ah,look);
   if(crewOn&&!crewFirst)drawSeatedCrew(b,P,ra,sailorLook(b),sp);
-  if(b.capsized&&!behind)drawCapsizedCrew(b,P);
+  if(capAt==="front")drawCapsizedCrew(b,P);
 }
 // a moored boat: sail rolled up along the boom, which is lashed down the middle; the committee boat flies a flag
 function drawMooredRig(b,P,mastBase,mastTop){
@@ -2574,18 +2632,22 @@ function updateHUD(){
 let last=performance.now(),acc=0;
 const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 function frame(now){
-  const raw=(now-last)/1000;let dt=Math.min(0.1,raw);last=now;
+  const t0=performance.now(),raw=(now-last)/1000;let dt=Math.min(0.1,raw);last=now;
   // frames slower than ~40 fps for a couple of seconds: step the graphics down a level
   // (very long gaps are a hidden tab or a pause in the browser, not slow drawing)
   // (ignores the first few seconds, while fonts load and the page settles)
   if(raw<0.5&&(warmT+=raw)>4){
     if(raw>0.03)slowT+=raw;else slowT=Math.max(0,slowT-raw*0.5);
     fastT=raw<0.02?fastT+raw:0;
-    if(slowT>3&&GQ>-1){GQ--;slowT=0;fastT=0;if(GQ<0)resize();}
-    else if(fastT>15&&GQ<2){GQ++;fastT=0;if(GQ===0)resize();}
+    // a level that has proved too slow twice is not tried again, so quality doesn't keep flipping
+    if(slowT>3&&GQ>-1){gqFail[GQ]=(gqFail[GQ]||0)+1;GQ--;slowT=0;fastT=0;if(GQ<0)resize();}
+    else if(fastT>15&&GQ<2&&(gqFail[GQ+1]||0)<2){GQ++;fastT=0;if(GQ===0)resize();}
   }
   const live=S.mode!=="menu"&&!S.paused&&!(S.race&&S.race.stage==="done");
-  if(live){acc+=dt;while(acc>=1/120){step(1/120);acc-=1/120;}}
+  // physics: advance by exactly the time since the last frame, in equal sub-steps of at most 1/120 s,
+  // so every frame moves things by the right amount (a fixed step with a carried-over remainder made
+  // some frames take one step and others two or three, which looked jittery)
+  if(live){const n=Math.max(1,Math.ceil(dt*120-1e-6)),h=dt/n;for(let i=0;i<n;i++)step(h);}
   else{S.t+=dt*(S.paused?0:1);if(S.mode==="menu"){S.cam.x+=Math.sin(S.t*0.05)*0.2;updateWind(dt);}}
   // waves and streaks move at a speed set by the wind, accumulated frame by frame so a change in
   // wind strength changes their speed smoothly instead of making them jump
@@ -2618,8 +2680,12 @@ function frame(now){
     hudT+=dt;
     if(hudT>0.08){hudT=0;updateHUD();drawDial();if(S.mode==="race")drawMinimap();}
   }
+  // frame-rate readout (F)
+  perf.n++;perf.ms+=performance.now()-t0;perf.t+=raw;
+  if(perf.t>=0.5){if(!$("perf").hidden)$("perf").textContent=Math.round(perf.n/perf.t)+" fps · drawing "+(perf.ms/perf.n).toFixed(1)+" ms · quality "+["low res","plain","medium","full"][GQ+1]+" · "+DPR+"×";perf.n=0;perf.ms=0;perf.t=0;}
   requestAnimationFrame(frame);
 }
+const perf={n:0,ms:0,t:0};
 // menu backdrop: drifting water with gusts
 S.mode="menu";S.cam={x:0,y:0};initGusts();
 requestAnimationFrame(frame);
