@@ -1403,7 +1403,7 @@ const rgb=(c,k)=>"rgb("+c.map(v=>Math.round(clamp(v*k,0,255))).join(",")+")";
 const lerp3=(p,q,t)=>({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t,z:p.z+(q.z-p.z)*t});
 const limb=(p0,p1,w,c)=>{const q0=toView(p0),q1=toView(p1);ctx.strokeStyle=c;ctx.lineWidth=w;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(q0[0],q0[1]);ctx.lineTo(q1[0],q1[1]);ctx.stroke();};
 // Part of a polygon that is under the water (z<0): drawn over with sea colour, with foam on the waterline.
-function submerge(pts){
+function submerge(pts,fill="rgba(12,70,88,0.86)"){
   const out=[];
   for(let i=0;i<pts.length;i++){
     const p=pts[i],q=pts[(i+1)%pts.length],pin=p.z<0,qin=q.z<0;
@@ -1411,7 +1411,7 @@ function submerge(pts){
     if(pin!==qin){const t=p.z/(p.z-q.z);out.push({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t,z:0,wl:true});}
   }
   if(out.length<3)return;
-  ctx.fillStyle="rgba(12,70,88,0.86)";poly(out,toView);ctx.fill();
+  ctx.fillStyle=fill;poly(out,toView);ctx.fill();
   const wl=out.filter(p=>p.wl);
   if(wl.length===2){const a=toView(wl[0]),c=toView(wl[1]);ctx.strokeStyle="rgba(235,248,246,0.55)";ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(c[0],c[1]);ctx.stroke();}
 }
@@ -2180,7 +2180,8 @@ function drawMooredRig(b,P,mastBase,mastTop){
 function drawRig(b,sp,mastBase,mastTop,F,ah,look=PLAYER_LOOK){
   const soak=clamp((ah-0.9)/0.6,0,1);                  // sail lying in the water
   drawSail(sp,toView,soak?"rgba("+Math.round(255-60*soak)+","+Math.round(255-30*soak)+","+Math.round(255-20*soak)+","+(0.9-0.3*soak).toFixed(2)+")":(sp.luff?"rgba(255,255,255,0.82)":look.sail),"rgba(140,160,168,0.9)",soak?null:look.stripe);
-  if(soak)submerge([sp.tack,sp.clew,...sp.leech,sp.head]);
+  // a white sail just under the surface shows through as pale turquoise, not dark like the hull bottom
+  if(soak)submerge([sp.tack,sp.clew,...sp.leech,sp.head],"rgba(28,118,132,0.5)");
   const tb=toView(sp.tack),cb=toView(sp.clew);
   ctx.lineCap="round";
   ctx.strokeStyle="#33434a";ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(tb[0],tb[1]);ctx.lineTo(cb[0],cb[1]);ctx.stroke();
@@ -2376,10 +2377,14 @@ function drawCapsizedCrew(b,P){
   // cockpit and is scooped in, ending up sitting in the middle
   if(!c.popFrom)c.popFrom=righterPose(b,P,{...c,lever:1},out);
   const t=clamp(c.t/1.1,0,1),e=t*t*(3-2*t),seat=crewPose(b,P,0),f=c.popFrom;
-  const sag=Math.sin(t*Math.PI)*4;                            // dips towards the water on the way in
-  const k={feet:lerp3(f.feet,seat.foot,e),knee:lerp3(f.knee,seat.knee,e),hip:lerp3(f.hip,seat.hip,e),
-    sh:lerp3(f.sh,seat.sh,e),head:lerp3(f.head,seat.head,e),hand:lerp3(f.hand,seat.knee,e)};
-  for(const q of [k.hip,k.sh,k.head])q.z-=sag;
+  // The body travels over the gunwale they were holding (a point that turns with the boat as she comes
+  // up), not in a straight line, which would pass through the hull. Its shape blends from standing on
+  // the board to sitting.
+  const g=P(-7,-c.side*11,13),u=1-e;
+  const hip={x:u*u*f.hip.x+2*u*e*g.x+e*e*seat.hip.x,y:u*u*f.hip.y+2*u*e*g.y+e*e*seat.hip.y,z:u*u*f.hip.z+2*u*e*g.z+e*e*seat.hip.z};
+  const part=(a,bq)=>{const o=lerp3({x:a.x-f.hip.x,y:a.y-f.hip.y,z:a.z-f.hip.z},{x:bq.x-seat.hip.x,y:bq.y-seat.hip.y,z:bq.z-seat.hip.z},e);
+    return {x:hip.x+o.x,y:hip.y+o.y,z:hip.z+o.z};};
+  const k={feet:part(f.feet,seat.foot),knee:part(f.knee,seat.knee),hip,sh:part(f.sh,seat.sh),head:part(f.head,seat.head),hand:part(f.hand,seat.knee)};
   drawRighter(k,look,P);
 }
 // Standing on the centreboard: feet near the hull, body straight and leaning back away from the boat,
