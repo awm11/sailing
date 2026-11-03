@@ -202,6 +202,22 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 #replayBar button[aria-pressed="true"]{background:#ffd447;color:#1d1503;border-color:#ffd447}
 #replayBar .rSeg{display:flex}#replayBar .rSeg button{border-radius:0}#replayBar .rSeg button:first-child{border-radius:6px 0 0 6px}#replayBar .rSeg button:last-child{border-radius:0 6px 6px 0}
 #replayBar .rDone{background:var(--signal);border-color:var(--signal);color:#1d0d02}
+#net .card{max-width:560px;width:calc(100vw - 32px)}
+#net .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+#net label{font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);min-width:64px}
+#net input,#net select{font:600 15px var(--mono);color:var(--ink);background:rgba(255,255,255,.06);border:1.5px solid var(--panel-line);border-radius:8px;padding:8px 10px}
+#net input#netCode{width:96px;text-transform:uppercase;letter-spacing:.2em;text-align:center}
+#net input#netName{width:180px}
+#net .or{color:var(--muted);font-size:13px;margin:14px 0 0}
+#net .code{font:800 56px var(--display);letter-spacing:.12em;color:#ffd447;line-height:1;margin:6px 0 2px}
+#net .sub{color:var(--muted);font-size:13px}
+#net ol{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px}
+#net li{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.04);font-weight:600}
+#net li i{width:12px;height:12px;border-radius:3px;flex:none}
+#net li .tag{margin-left:auto;font:500 11px var(--mono);color:var(--muted)}
+#netStatus{min-height:20px;margin-top:12px;font-size:13px;color:var(--muted)}
+#netStatus.bad{color:var(--bad)}
+.btn:disabled{opacity:.45;cursor:default}
 .btn{cursor:pointer;padding:9px 16px;border-radius:8px;border:1.5px solid var(--panel-line);background:rgba(255,255,255,.06);font-weight:700}
 .btn.primary{background:var(--signal);border-color:var(--signal);color:#1d0d02}
 .table{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:4px}
@@ -316,6 +332,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
       <button class="mode" id="goLesson"><span class="k">L</span><h2>Learn to sail</h2><p>New to sailing? A guided first sail: the keys, the gauges, steering, trimming, balancing, tacking and gybing, one step at a time.</p><span class="menuBest" id="lessonTag"></span></button>
       <button class="mode" id="goOpen"><span class="k">1</span><h2>Open water</h2><p>Free sailing in wind that shifts and changes strength, plus seven drills that teach you the points of sail.</p></button>
       <button class="mode" id="goRace"><span class="k">2</span><h2>Race course</h2><p>Race three other boats. Time your start to the countdown, round the marks, give way when the rules say so, and finish first. Choose a course below.</p><span class="menuBest" id="menuBest"></span></button>
+      <button class="mode" id="goNet"><span class="k">3</span><h2>Race online</h2><p>Race up to three friends live. One of you hosts and shares a four-letter code; the others join with it. Empty places are filled by computer boats.</p></button>
     </div>
     <div class="levels">
       <span class="eyebrow">Wind</span>
@@ -352,6 +369,29 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
   </div>
 </div>
 
+<div id="net" class="overlay" hidden>
+  <div class="card" role="dialog" aria-label="Race online">
+    <h2>Race online</h2>
+    <div id="netStart">
+      <div class="row"><label for="netName">Name</label><input id="netName" maxlength="14" autocomplete="off" spellcheck="false" placeholder="Sailor"></div>
+      <div class="btns"><button class="btn primary" id="netHostBtn">Host a race</button></div>
+      <p class="or">or join a friend's race with their code:</p>
+      <div class="row"><input id="netCode" maxlength="4" autocomplete="off" spellcheck="false" placeholder="CODE" aria-label="Room code"><button class="btn" id="netJoinBtn">Join</button></div>
+    </div>
+    <div id="netLobby" hidden>
+      <div class="sub" id="netCodeLbl">Room code</div>
+      <div class="code" id="netCodeBig">----</div>
+      <div class="sub" id="netHint">Send this code to your friends.</div>
+      <ol id="netPlayers"></ol>
+      <div class="row" id="netHostOpts"><label for="netCourse">Course</label><select id="netCourse"></select><label for="netLevel">Wind</label><select id="netLevel"></select></div>
+      <div class="sub" id="netSetup" style="margin-top:10px"></div>
+      <div class="btns"><button class="btn primary" id="netGo">Start race</button></div>
+    </div>
+    <div id="netStatus" aria-live="polite"></div>
+    <div class="btns"><button class="btn" id="netBack">Back</button></div>
+  </div>
+</div>
+
 <div id="pause" class="overlay" hidden>
   <div class="card">
     <h2>Paused</h2>
@@ -382,7 +422,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
       <span>Your penalties</span><span class="v" id="fPen"></span>
       <span>Personal best</span><span class="v" id="fBest"></span>
     </div>
-    <div class="btns"><button class="btn primary" id="again">Race again (R)</button><button class="btn" id="watchReplay">Watch replay (V)</button><button class="btn" id="toMenu2">Menu (M)</button></div>
+    <div class="btns"><button class="btn primary" id="again">Race again (R)</button><button class="btn" id="watchReplay">Watch replay (V)</button><span class="sub" id="netWait" hidden style="align-self:center;color:var(--muted)">Waiting for the host to start the next race…</span><button class="btn" id="toMenu2">Menu (M)</button></div>
   </div>
 </div>
 
@@ -634,6 +674,7 @@ function showLessonTag(){let d=false;try{d=localStorage.getItem("closeHauledLess
   const t=$("lessonTag");if(t)t.textContent=d?"✓ Done: you can take it again any time":"★ New? Start here";}
 function startMode(mode){
   if(S.replay)endReplay(false);
+  if(NET.peer&&!NET.starting)netLeave();
   if(S.lesson)endLesson();
   setTimeout(warmPolar,0);
   S.mode=mode;S.paused=false;S.t=0;S.pilot=null;S.lastLee=null;S.trail=[];S.hitCd=0;S.auto=false;S.fx=[];S.ais=[];S.rowTip=null;
@@ -671,13 +712,18 @@ function startMode(mode){
 // ════════════════════════════════════════════════════════════════════
 function initGusts(){
   S.gusts=[];
-  const n=S.mode==="menu"?6:LV().nG;
+  const n=S.mode==="menu"?6:LV().nG*gustCentres().length;
   for(let i=0;i<n;i++)S.gusts.push(spawnGust(true));
 }
+// Gusts live around the boats being sailed: just yours, or (when hosting online) everyone's.
+function gustCentres(){
+  if(NET.started&&NET.role==="host"&&S.mode==="race")return [S.boat,...S.ais.filter(a=>a.human).map(a=>a.b)];
+  return [S.cam];
+}
 function spawnGust(anywhere){
-  const f=S.wind.from, ux=Math.sin(f), uy=-Math.cos(f), px=-uy, py=ux;
+  const f=S.wind.from, ux=Math.sin(f), uy=-Math.cos(f), px=-uy, py=ux, C=gustCentres(), c=C[Math.floor(Math.random()*C.length)];
   const along=anywhere?(Math.random()*2-1)*1300:1300, across=(Math.random()*2-1)*1100;
-  return {x:S.cam.x+ux*along+px*across,y:S.cam.y+uy*along+py*across,r:160+Math.random()*200,s:LV().gust[0]+Math.random()*(LV().gust[1]-LV().gust[0])};
+  return {x:c.x+ux*along+px*across,y:c.y+uy*along+py*across,r:160+Math.random()*200,s:LV().gust[0]+Math.random()*(LV().gust[1]-LV().gust[0])};
 }
 function initWindState(){
   const race=S.mode==="race";
@@ -712,7 +758,7 @@ function updateWind(dt){
   for(let i=0;i<S.gusts.length;i++){
     const g=S.gusts[i];
     g.x+=tx*S.wind.speed*0.6*dt; g.y+=ty*S.wind.speed*0.6*dt;
-    if(Math.hypot(g.x-S.cam.x,g.y-S.cam.y)>1700) S.gusts[i]=spawnGust(false);
+    if(Math.min(...gustCentres().map(c=>Math.hypot(g.x-c.x,g.y-c.y)))>1700) S.gusts[i]=spawnGust(false);
   }
 }
 function windAt(x,y){
@@ -728,8 +774,8 @@ function windAt(x,y){
 const $=id=>document.getElementById(id);
 function show(id,v){$(id).hidden=!v;}
 const finishOpen=()=>!$("finish").hidden;
-function togglePause(){S.paused=!S.paused;show("pause",S.paused);if(!S.paused)cv.focus();}
-function toMenu(){if(S.replay)endReplay(false);if(S.lesson)endLesson();showLessonTag();S.mode="menu";S.paused=false;show("pause",false);show("finish",false);show("hud",false);show("menu",true);$("goOpen").focus();}
+function togglePause(){S.paused=!S.paused;$("pause").querySelector("h2").textContent=NET.started?"Menu":"Paused";show("pause",S.paused);if(!S.paused)cv.focus();}
+function toMenu(){if(S.replay)endReplay(false);if(NET.peer)netLeave();if(S.lesson)endLesson();showLessonTag();S.mode="menu";S.paused=false;show("pause",false);show("finish",false);show("hud",false);show("menu",true);$("goOpen").focus();}
 function setLevel(k){
   levelKey=k;try{localStorage.setItem("closeHauledLevel",k);}catch(e){}
   document.querySelectorAll(".lvl").forEach(b=>b.setAttribute("aria-pressed",b.dataset.l===k?"true":"false"));
@@ -782,11 +828,14 @@ setLevel(levelKey);pickCourse(courseKey);showLessonTag();
 $("goOpen").onclick=()=>startMode("open");
 $("goRace").onclick=()=>startMode("race");
 $("resume").onclick=togglePause;
-$("restart").onclick=()=>{if(S.lesson)startLesson();else startMode(S.mode);cv.focus();};
+$("restart").onclick=()=>{if(NET.started){if(NET.role==="host")netGo();else toast("Only the host can start a new race","");}else if(S.lesson)startLesson();else startMode(S.mode);cv.focus();};
 $("goLesson").onclick=()=>startLesson();
 $("toMenu1").onclick=toMenu;$("toMenu2").onclick=toMenu;
-$("again").onclick=()=>startMode("race");
+$("again").onclick=()=>{if(NET.started)netGo();else startMode("race");};
 $("watchReplay").onclick=startReplay;
+$("goNet").onclick=netOpen;$("netHostBtn").onclick=netHost;$("netJoinBtn").onclick=netJoin;$("netBack").onclick=netClose;$("netGo").onclick=netGo;
+$("netCourse").onchange=e=>{pickCourse(e.target.value);netBroadcast(netLobbyMsg());};
+$("netLevel").onchange=e=>{setLevel(e.target.value);netBroadcast(netLobbyMsg());};
 $("rpPlay").onclick=replayToggle;$("rpFollow").onclick=replayFollow;$("rpDone").onclick=()=>endReplay(true);
 $("rpScrub").oninput=e=>{const P=S.replay;if(!P)return;P.t=P.t0+(P.t1-P.t0)*e.target.value/1000;seekReplay(P.t,true);syncReplayBar();};
 document.querySelectorAll("#rpSpeed button").forEach(b=>b.onclick=()=>{if(S.replay){S.replay.speed=+b.dataset.s;syncReplayBar();}});
@@ -903,6 +952,9 @@ const MAP={left:["ArrowLeft","KeyA"],right:["ArrowRight","KeyD"],in:["ArrowUp","
 const held=k=>touchHeld.has(k)||MAP[k].some(c=>keys.has(c));
 window.addEventListener("keydown",e=>{
   const c=e.code;
+  const tg=e.target&&e.target.tagName;
+  if(tg==="INPUT"||tg==="SELECT"){if(c==="Escape"&&!$("net").hidden)netClose();if(c==="Enter"&&e.target.id==="netCode")netJoin();return;}
+  if(!$("net").hidden){if(c==="Escape")netClose();return;}
   if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space"].includes(c))e.preventDefault();
   if(e.repeat){keys.add(c);return;}
   keys.add(c);
@@ -910,6 +962,7 @@ window.addEventListener("keydown",e=>{
     if(c==="KeyL"||c==="Digit0"||c==="Numpad0")startLesson();
     if(c==="Digit1"||c==="Numpad1")startMode("open");
     if(c==="Digit2"||c==="Numpad2")startMode("race");
+    if(c==="Digit3"||c==="Numpad3")netOpen();
     if(c==="KeyN"){Snd.on=!Snd.on;try{localStorage.setItem("closeHauledSound",Snd.on?"1":"0");}catch(e){}}
     if(c==="ArrowLeft"||c==="ArrowRight"){const i=LEVEL_KEYS.indexOf(levelKey)+(c==="ArrowRight"?1:-1);setLevel(LEVEL_KEYS[clamp(i,0,LEVEL_KEYS.length-1)]);}
     if(c==="ArrowUp"||c==="ArrowDown"){const i=COURSE_KEYS.indexOf(courseKey)+(c==="ArrowDown"?1:-1);pickCourse(COURSE_KEYS[(i+COURSE_KEYS.length)%COURSE_KEYS.length]);}
@@ -927,7 +980,7 @@ window.addEventListener("keydown",e=>{
   }else if(c==="KeyV"&&finishOpen()){startReplay();return;}
   if(c==="KeyP"||c==="Escape"){if(!finishOpen())togglePause();}
   else if(c==="Enter"&&S.lesson&&(LESSON[S.lesson.i].next||S.lesson.done)){e.preventDefault();lessonGo(S.lesson.i+1);}
-  else if(c==="KeyR"){if(S.lesson)startLesson();else startMode(S.mode);}
+  else if(c==="KeyR"){if(NET.started){if(NET.role==="host")netGo();else toast("Only the host can start a new race","");}else if(S.lesson)startLesson();else startMode(S.mode);}
   else if(c==="KeyM")toMenu();
   else if(c==="KeyT"&&!S.paused){S.auto=!S.auto;toast(S.auto?"Auto-trim on":"Auto-trim off","");}
   else if(c==="KeyI"){S.invert=!S.invert;try{localStorage.setItem("closeHauledInvert",S.invert?"1":"0");}catch(e){}toast(S.invert?"Swipe reversed":"Swipe normal","");}
@@ -1001,16 +1054,22 @@ function updateSound(){
   const menu=S.mode==="menu",b=S.boat,F=S.F;
   glide(Snd.master.gain,!Snd.on||S.paused?0:menu?0.45:0.8,0.25);
   const aws=menu||!F?S.wind.speed:F.aws, kn=aws/PX_PER_KN, gust=F&&F.gust||0;
-  glide(Snd.wind.g.gain,0.015+0.12*clamp((kn-2)/18,0,1),0.3);
-  glide(Snd.wind.fl.frequency,280+kn*45,0.3);
-  glide(Snd.whistle.g.gain,0.02*clamp((kn-9)/10,0,1)+0.03*gust,0.4);
+  // The background is kept low and breathes: a slow, uneven swell lifts and drops it every few seconds,
+  // so it comes and goes like waves instead of a steady hiss. Gusts bring the wind up for a moment.
+  const T=S.t,swell=clamp(0.5+0.32*Math.sin(T*0.71)+0.22*Math.sin(T*0.29+1.3)+0.14*Math.sin(T*1.63+0.4),0,1);
+  const wk=clamp((kn-3)/20,0,1);
+  glide(Snd.wind.g.gain,(0.003+0.045*wk)*(0.35+0.65*swell)+0.05*gust*wk,0.6);
+  glide(Snd.wind.fl.frequency,260+kn*38,0.5);
+  glide(Snd.whistle.g.gain,0.008*clamp((kn-12)/10,0,1)+0.015*gust*wk,0.5);
   const sp=menu||!b?0:Math.abs(b.u)/PX_PER_KN;
-  const slap=0.02+0.012*Math.sin(S.t*1.3)+0.008*Math.sin(S.t*2.9);
-  glide(Snd.water.g.gain,menu?0.025:b&&b.capsized?0.08:slap+0.16*clamp(sp/9,0,1),0.2);
+  // water: the original steady lapping, 20% quieter
+  const lap=0.02+0.012*Math.sin(T*1.3)+0.008*Math.sin(T*2.9);
+  glide(Snd.water.g.gain,0.8*(menu?0.025:b&&b.capsized?0.08:lap+0.16*clamp(sp/9,0,1)),0.2);
   glide(Snd.water.fl.frequency,220+sp*110,0.2);
+  ambience(menu,b,kn,sp);
   // a sail that is luffing (or head to wind) flaps; louder in more wind
   const luffing=!menu&&F&&b&&!b.capsized&&(F.alpha<0.04||Math.abs(F.awa)<0.35);
-  const wf=clamp(kn/15,0,1),amt=luffing?0.05+0.11*wf:0;
+  const wf=clamp(kn/15,0,1),amt=luffing?1.6*(0.05+0.11*wf):0;
   // a quiet rustle underneath, wandering in pitch
   glide(Snd.luff.g.gain,amt*0.22,0.08);glide(Snd.lfoAmt.gain,0,0.05);
   if(luffing)glide(Snd.luff.fl.frequency,700+Math.random()*900,0.12);
@@ -1023,6 +1082,52 @@ function updateSound(){
     flap(t,amt*(0.35+Math.random()*0.9),500+Math.random()*1900,0.02+Math.random()*0.07,Math.random()<0.1);
     const gap=r<0.68?0.035+Math.random()*0.08:r<0.93?0.14+Math.random()*0.22:0.35+Math.random()*0.4;
     Snd.nextFlap+=gap*(1.35-0.55*wf);
+  }
+}
+// Occasional details over the quiet background, each at an uneven interval: a wave slapping the hull,
+// a far-off gull, and the clink of a rope on the mast when the boat is slow.
+function ambience(menu,b,kn,sp){
+  if(!Snd.on||S.paused||S.silent)return;
+  const now=Snd.c.currentTime;
+  Snd.nSlap=Snd.nSlap||now+2;Snd.nGull=Snd.nGull||now+8+Math.random()*12;Snd.nClink=Snd.nClink||now+4;
+  if(now>Snd.nSlap){
+    if(!menu&&b&&!b.capsized)hullSlap(0.025+0.04*clamp(kn/20,0,1)+0.03*clamp(sp/10,0,1));
+    Snd.nSlap=now+(Math.random()<0.25?0.35+Math.random()*0.4:2.2+Math.random()*5)*(1.3-0.5*clamp(kn/20,0,1));
+  }
+  if(now>Snd.nGull){gull(menu?0.012:0.016);Snd.nGull=now+22+Math.random()*45;}
+  if(now>Snd.nClink){
+    if(!menu&&b&&!b.capsized&&sp<2.5)clink(0.012+Math.random()*0.01);
+    Snd.nClink=now+1.2+Math.random()*4;
+  }
+}
+function sndPan(v){const c=Snd.c;if(!c.createStereoPanner)return Snd.master;const p=c.createStereoPanner();p.pan.value=v;p.connect(Snd.master);return p;}
+// a small wave against the hull: a soft low thump with a short wash after it
+function hullSlap(vol){
+  const c=Snd.c,t=c.currentTime,s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();
+  s.buffer=Snd.brown;f.type="lowpass";f.frequency.setValueAtTime(700+Math.random()*400,t);f.frequency.exponentialRampToValueAtTime(180,t+0.35);
+  s.connect(f);f.connect(g);g.connect(sndPan((Math.random()-0.5)*0.6));
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.015);g.gain.exponentialRampToValueAtTime(0.0001,t+0.4+Math.random()*0.25);
+  s.start(t,Math.random()*1.5);s.stop(t+0.8);
+}
+// a distant gull: two or three falling "kyow" calls, off to one side
+function gull(vol){
+  const c=Snd.c,out=sndPan((Math.random()<0.5?-1:1)*(0.4+Math.random()*0.5)),n=2+(Math.random()<0.4?1:0),f0=1500+Math.random()*500;
+  for(let i=0;i<n;i++){
+    const t=c.currentTime+i*(0.32+Math.random()*0.08),o=c.createOscillator(),bp=c.createBiquadFilter(),g=c.createGain(),d=0.2+Math.random()*0.08;
+    o.type="sawtooth";o.frequency.setValueAtTime(f0*1.1,t);o.frequency.linearRampToValueAtTime(f0*1.25,t+d*0.25);o.frequency.exponentialRampToValueAtTime(f0*0.62,t+d);
+    bp.type="bandpass";bp.frequency.value=f0*1.4;bp.Q.value=2.5;
+    o.connect(bp);bp.connect(g);g.connect(out);
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.03);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+    o.start(t);o.stop(t+d+0.05);
+  }
+}
+// a rope tapping the aluminium mast: a short bright ping
+function clink(vol){
+  const c=Snd.c,t=c.currentTime,f=2400+Math.random()*900,out=sndPan((Math.random()-0.5)*0.3);
+  for(const [m,v] of [[1,1],[2.76,0.35]]){
+    const o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=f*m;o.connect(g);g.connect(out);
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol*v,t+0.002);g.gain.exponentialRampToValueAtTime(0.0001,t+0.25);
+    o.start(t);o.stop(t+0.3);
   }
 }
 function flap(t,vol,f,dur,crack){
@@ -1066,11 +1171,11 @@ const sfx={
 // ════════════════════════════════════════════════════════════════════
 function step(dt){
   S.t+=dt;
-  updateWind(dt);
+  if(NET.started&&NET.role==="client"&&S.mode==="race")netWind(dt);else updateWind(dt);
   lessonWind(dt);
   const b=S.boat;
   stepFx(dt);
-  if(S.mode==="race"){stepRaceClock();for(const ai of S.ais)stepAI(ai,dt);boatEncounters(dt);}
+  if(S.mode==="race"){stepRaceClock();for(const ai of S.ais){if(ai.net)stepNetBoat(ai,dt);else stepAI(ai,dt);}boatEncounters(dt);}
   if(b.capsized){stepCapsized(b,dt);return;}
   // in the lesson, until balancing has been taught, the sailor keeps the boat flat by themselves
   // (heeling makes a boat turn into the wind, which would fight a beginner's steering)
@@ -1433,15 +1538,37 @@ function takeOver(){
   S.pilot=null;
   if(S.mode==="race"&&!S.replay)toast("You have control","good");
 }
+function renderResults(){
+  const r=S.race,net=NET.started;
+  const rows=[{name:"You",rs:r,me:true},...S.ais.map(a=>({name:a.name,rs:a.rs,look:a.look}))];
+  rows.sort((x,y)=>(x.rs.finished?x.rs.finishT:1e9)-(y.rs.finished?y.rs.finishT:1e9));
+  const pos=rows.findIndex(x=>x.me)+1;
+  $("fTitle").textContent=pos===1?"You won!":"You finished "+ord(pos);
+  $("fTable").innerHTML=rows.map((x,i)=>'<li class="'+(x.me?"me":"")+'"><span class="pos">'+(i+1)+'</span><span class="nm">'+
+    (x.me?"You":'<i style="background:'+x.look.stripe+'"></i>'+escHtml(x.name))+'</span><span class="pen">'+(x.rs.pen?"+"+x.rs.pen+" s":"")+
+    '</span><span class="tm">'+(x.rs.finished?fmt(x.rs.finishT):net?"racing…":"DNF")+"</span></li>").join("");
+  return {rows,pos};
+}
+const escHtml=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function finishRace(){
   const r=S.race;
   r.finishT=r.time+r.pen;
   sfx.horn(0.7);setTimeout(sfx.bell,700);
   // let the computer boats sail on (quickly, off screen) until they finish too
+  // (online, everyone keeps racing live and the table fills in as they finish)
+  const net=NET.started;
+  if(!net){
   S.silent=true;
   const dt=1/30;
   for(let i=0;i<30*900&&S.ais.some(a=>!a.rs.finished);i++){S.t+=dt;updateWind(dt);for(const ai of S.ais)stepAI(ai,dt);boatEncounters(dt);}
   S.silent=false;
+  }
+  renderResults();
+  $("fStart").textContent=r.startLate<1?"On the gun":fmt(r.startLate)+" late";
+  $("fPen").textContent=r.pen?"+"+r.pen+" s":"none";
+  $("watchReplay").hidden=net;
+  $("again").hidden=net&&NET.role!=="host";$("netWait").hidden=!(net&&NET.role!=="host");
+  if(net){$("fBest").textContent="—";$("fPB").hidden=true;show("finish",true);(NET.role==="host"?$("again"):$("toMenu2")).focus();return;}
   const rows=[{name:"You",rs:r,me:true},...S.ais.map(a=>({name:a.name,rs:a.rs,look:a.look}))];
   rows.sort((x,y)=>(x.rs.finished?x.rs.finishT:1e9)-(y.rs.finished?y.rs.finishT:1e9));
   const pos=rows.findIndex(x=>x.me)+1;
@@ -1675,6 +1802,263 @@ function bounceOff(b){
   if(S.mode==="race")for(const m of MARKS)if(push(m.x,m.y,23,3,20))hit={kind:"mark"};
   return hit;
 }
+// ════════════════════════════════════════════════════════════════════
+// ONLINE RACING
+// ════════════════════════════════════════════════════════════════════
+// Peer to peer with PeerJS: the host's browser opens a room named after a four-letter code and the others
+// connect straight to it. Each player sails their own boat on their own computer, so steering never lags,
+// and sends its state to the host about 15 times a second. The host runs the wind and gusts, the computer
+// boats that fill empty places, and the rules (fouls), and sends everything back out. Other boats are drawn
+// a moment behind, gliding between updates.
+const NET={peer:null,role:null,conns:new Map(),host:null,code:"",me:null,players:[],started:false,starting:false,sendT:0,resT:0,wind:null};
+const NET_SLOTS=()=>[{x:-140,y:260,h:Math.PI/2,lineX:-80,look:PLAYER_LOOK},...AI_CREW.map(c=>({x:c.x,y:c.y,h:c.h,lineX:c.lineX,look:c.look}))];
+const NET_LIB="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js";
+function netLib(cb){
+  if(window.Peer)return cb();
+  netStatus("Loading…");
+  const sc=document.createElement("script");sc.src=NET_LIB;sc.onload=()=>window.Peer?cb():netStatus("Couldn't load the online library.","bad");
+  sc.onerror=()=>netStatus("Couldn't load the online library. Are you online?","bad");document.head.appendChild(sc);
+}
+const netOpts=()=>window.NET_PEER_OPTS||{debug:0};
+function netMyName(){const p=NET.players.find(q=>q.id===NET.me);return p?p.name:"Sailor";}
+function netStatus(t,c){const el=$("netStatus");el.textContent=t||"";el.className=c||"";}
+function netErr(e){
+  const t=e&&e.type;
+  if(t==="peer-unavailable")return "There's no race with that code. Check it, or ask your friend to host again.";
+  if(t==="network"||t==="server-error"||t==="socket-error"||t==="socket-closed")return "Couldn't reach the online service. Check your connection and try again.";
+  if(t==="browser-incompatible")return "This browser can't do online races.";
+  return "Something went wrong ("+(t||"error")+"). Try again.";
+}
+function netOpen(){
+  try{$("netName").value=localStorage.getItem("closeHauledName")||"";}catch(e){}
+  $("netStart").hidden=!!NET.peer;$("netLobby").hidden=!NET.peer;
+  if(!NET.peer)netStatus("");
+  show("net",true);(NET.peer?$("netBack"):$("netName").value?$("netHostBtn"):$("netName")).focus();
+}
+function netClose(){if(NET.peer)netLeave();show("net",false);$("goNet").focus();}
+function netReadName(){
+  const v=($("netName").value||"").trim().replace(/\s+/g," ").slice(0,14)||"Sailor";
+  try{localStorage.setItem("closeHauledName",v);}catch(e){}return v;
+}
+function netLeave(){
+  const P=NET.peer;
+  if(NET.role==="client"&&NET.host&&NET.host.open)try{NET.host.send({t:"bye"});}catch(e){}
+  if(NET.role==="host")for(const c of NET.conns.values())try{c.send({t:"closed"});}catch(e){}
+  NET.peer=null;NET.role=null;NET.conns.clear();NET.host=null;NET.players=[];NET.started=false;NET.wind=null;
+  if(P)setTimeout(()=>{try{P.destroy();}catch(e){}},150);
+  $("netStart").hidden=false;$("netLobby").hidden=true;$("netWait").hidden=true;$("watchReplay").hidden=false;$("again").hidden=false;
+}
+const netCode=()=>Array.from({length:4},()=>"ABCDEFGHJKLMNPQRSTUVWXYZ"[Math.floor(Math.random()*24)]).join("");
+function netHost(){
+  const name=netReadName();
+  netLib(()=>{
+    if(NET.peer)netLeave();
+    const code=netCode(),peer=new Peer("closehauled-"+code,netOpts());
+    Object.assign(NET,{peer,role:"host",code,me:"host",players:[{id:"host",name}],started:false});
+    netStatus("Opening a room…");
+    peer.on("open",()=>{if(NET.peer!==peer)return;netStatus("");netLobby();});
+    peer.on("connection",conn=>{
+      conn.on("data",d=>{if(NET.peer===peer)netHostRecv(conn,d);});
+      conn.on("close",()=>{if(NET.peer===peer)netDrop(conn.peer);});
+      conn.on("error",()=>{if(NET.peer===peer)netDrop(conn.peer);});
+    });
+    peer.on("error",e=>{if(NET.peer!==peer)return;if(e.type==="unavailable-id"){NET.peer=null;try{peer.destroy();}catch(_){}netHost();return;}netStatus(netErr(e),"bad");});
+    peer.on("disconnected",()=>{if(NET.peer===peer&&!peer.destroyed)try{peer.reconnect();}catch(e){}});
+  });
+}
+function netJoin(){
+  const code=($("netCode").value||"").trim().toUpperCase();
+  if(!/^[A-Z]{4}$/.test(code)){netStatus("A room code is four letters.","bad");$("netCode").focus();return;}
+  const name=netReadName();
+  netLib(()=>{
+    if(NET.peer)netLeave();
+    const peer=new Peer(undefined,netOpts());
+    Object.assign(NET,{peer,role:"client",code,me:null,players:[],started:false});
+    netStatus("Connecting to "+code+"…");
+    peer.on("open",id=>{
+      if(NET.peer!==peer)return;
+      NET.me=id;
+      const conn=peer.connect("closehauled-"+code,{reliable:true,serialization:"json"});NET.host=conn;
+      const to=setTimeout(()=>{if(NET.host===conn&&!conn.open)netStatus("Couldn't reach race "+code+". Check the code and try again.","bad");},10000);
+      conn.on("open",()=>{clearTimeout(to);conn.send({t:"hello",name});});
+      conn.on("data",d=>{if(NET.peer===peer)netClientRecv(d);});
+      conn.on("close",()=>{if(NET.peer===peer)netHostGone();});
+    });
+    peer.on("error",e=>{if(NET.peer===peer)netStatus(netErr(e),"bad");});
+  });
+}
+function netLobby(){
+  $("netStart").hidden=true;$("netLobby").hidden=false;
+  const host=NET.role==="host";
+  $("netCodeBig").textContent=NET.code;
+  $("netHint").textContent=host?"Send this code to your friends. Up to four boats race; computer boats fill any empty places.":"You're in. The host will start the race.";
+  const slots=NET_SLOTS();
+  $("netPlayers").innerHTML=[0,1,2,3].map(i=>{
+    const p=NET.players[i],c=AI_CREW[i-1];
+    if(p)return '<li><i style="background:'+slots[i].look.stripe+'"></i>'+escHtml(p.name)+'<span class="tag">'+(p.id===NET.me?"you":"")+(p.id==="host"?(p.id===NET.me?" · ":"")+"host":"")+"</span></li>";
+    return '<li style="opacity:.55"><i style="background:'+slots[i].look.stripe+'"></i>'+c.name+'<span class="tag">computer</span></li>';
+  }).join("");
+  $("netHostOpts").hidden=!host;$("netGo").hidden=!host;
+  const cs=$("netCourse"),ls=$("netLevel");
+  if(host&&!cs.options.length){
+    cs.innerHTML=COURSE_KEYS.map(k=>'<option value="'+k+'">'+COURSES[k].name+"</option>").join("");
+    ls.innerHTML=LEVEL_KEYS.map(k=>'<option value="'+k+'">'+LEVELS[k].label+"</option>").join("");
+  }
+  if(host){cs.value=courseKey;ls.value=levelKey;}
+  $("netSetup").textContent=(NET.lobbyInfo&&!host?COURSES[NET.lobbyInfo.course].name+" · "+LEVELS[NET.lobbyInfo.level].label.toLowerCase()+" wind"+(NET.lobbyInfo.started?" · a race is under way: you'll join the next one":""):"");
+}
+function netBroadcast(d){for(const c of NET.conns.values())if(c.open)try{c.send(d);}catch(e){}}
+function netSendTo(id,d){const c=NET.conns.get(id);if(c&&c.open)try{c.send(d);}catch(e){}}
+function netLobbyMsg(){return {t:"lobby",code:NET.code,players:NET.players,course:courseKey,level:levelKey,started:NET.started};}
+function netHostRecv(conn,d){
+  if(d.t==="hello"){
+    if(NET.players.length>=4){try{conn.send({t:"full"});}catch(e){}setTimeout(()=>conn.close(),300);return;}
+    NET.conns.set(conn.peer,conn);
+    NET.players.push({id:conn.peer,name:String(d.name||"Sailor").slice(0,14)});
+    netBroadcast(netLobbyMsg());netLobby();
+    if(S.mode==="race"&&NET.started)toast(String(d.name||"Sailor").slice(0,14)+" joined: they'll race next time","");
+  }else if(d.t==="b"){
+    const a=S.ais.find(q=>q.id===conn.peer);if(a)netTake(a,d);
+  }else if(d.t==="bye")netDrop(conn.peer);
+}
+function netDrop(id){
+  if(!NET.conns.has(id))return;
+  NET.conns.delete(id);
+  const p=NET.players.find(q=>q.id===id);NET.players=NET.players.filter(q=>q.id!==id);
+  const i=S.ais.findIndex(a=>a.id===id);
+  if(i>=0){S.ais.splice(i,1);netBroadcast({t:"gone",id});}
+  if(p&&S.mode==="race")toast(p.name+" has left","");
+  netBroadcast(netLobbyMsg());netLobby();
+}
+function netHostGone(){
+  const inRace=S.mode==="race"&&NET.started;
+  netLeave();
+  if(inRace){toMenu();}
+  netOpen();netStatus("The host has closed the race.","bad");
+}
+function netClientRecv(d){
+  if(d.t==="lobby"){NET.players=d.players;NET.lobbyInfo=d;if(!NET.started||S.mode!=="race")netLobby();}
+  else if(d.t==="full"){netStatus("That race is full (four boats).","bad");netLeave();}
+  else if(d.t==="closed"){netHostGone();}
+  else if(d.t==="start")netStartRace(d);
+  else if(d.t==="s")netSnap(d);
+  else if(d.t==="foul"){if(S.race){S.race.pen+=d.pen;sfx.thud();toast(d.msg,"bad");}}
+  else if(d.t==="toast")toast(d.msg,d.c||"");
+  else if(d.t==="gone"){const i=S.ais.findIndex(a=>a.id===d.id);if(i>=0){toast(S.ais[i].name+" has left","");S.ais.splice(i,1);}}
+}
+function netGo(){
+  if(NET.role!=="host")return;
+  const cs=$("netCourse"),ls=$("netLevel");
+  if(cs.value&&cs.value!==courseKey)pickCourse(cs.value);
+  if(ls.value&&ls.value!==levelKey)setLevel(ls.value);
+  const cfg={t:"start",course:courseKey,level:levelKey,players:NET.players.slice(0,4)};
+  netBroadcast(cfg);netStartRace(cfg);
+}
+// everyone builds the same start: humans in the first places, computer boats in the rest
+function netStartRace(cfg){
+  if(cfg.course!==courseKey)pickCourse(cfg.course);
+  if(cfg.level!==levelKey)setLevel(cfg.level);
+  NET.players=cfg.players;
+  NET.starting=true;NET.started=true;
+  show("net",false);
+  startMode("race");
+  NET.starting=false;
+  const slots=NET_SLOTS(),me=cfg.players.findIndex(p=>p.id===NET.me),host=NET.role==="host";
+  const place=(b,sl)=>{const p=fromWF(sl.x,sl.y);b.x=p.x;b.y=p.y;b.h=sl.h+CR.a;};
+  place(S.boat,slots[me]);S.boat.look=slots[me].look;S.pilot.lineX=slots[me].lineX;
+  S.cam.x=S.boat.x;S.cam.y=S.boat.y;
+  S.ais=[];
+  cfg.players.forEach((p,i)=>{if(i!==me)S.ais.push(netBoatFor(p.id,p.name,slots[i],true));});
+  for(let i=cfg.players.length;i<4;i++){
+    const c=AI_CREW[i-1];
+    if(host){const a=makeAI(c);a.id="ai"+i;S.ais.push(a);}
+    else S.ais.push(netBoatFor("ai"+i,c.name,slots[i],false));
+  }
+  if(host)initGusts();
+  S.lastTwa=wrap(S.wind.from-S.boat.h);S.side=S.lastTwa>=0?1:-1;
+  toast(host?"You're hosting: "+cfg.players.length+" sailor"+(cfg.players.length>1?"s":""):"Race on! Hosted by "+cfg.players[0].name,"");
+}
+function netBoatFor(id,name,sl,human){
+  const p=fromWF(sl.x,sl.y),b=newBoat(p.x,p.y,sl.h+CR.a);b.look=sl.look;b.u=human?20:45;
+  const rs=newRacerState();rs.name=name;
+  return {id,name,look:sl.look,b,rs,net:true,human,tgt:null,F:{awa:1.6,aws:100,alpha:0,boom:1.2,lee:1,drive:0,side:0},tack:1,warnT:0};
+}
+// ---- packing boat states small ----
+const r2=v=>Math.round(v*100)/100;
+function netPackBoat(b,F){
+  F=F||{};
+  const a=[b.x,b.y,b.h,b.u,b.v,b.heel,b.hv,b.crew,b.rudder,b.sheet,b.boomDraw,b.sailSide||1,b.capsized?1:0,F.awa||0,F.aws||0,F.alpha||0,F.boom||0,F.lee||1,F.drive||0,F.side||0].map(r2);
+  return b.capsized&&b.cap?[a,b.cap]:[a];
+}
+const netPackRs=rs=>[rs.next,rs.started?1:0,rs.ocs?1:0,rs.finished?1:0,r2(rs.finishT),rs.pen,r2(rs.startLate)];
+function netTake(ai,d){
+  const a=d.s[0];
+  ai.tgt={x:a[0],y:a[1],h:a[2],u:a[3],v:a[4],heel:a[5],hv:a[6],crew:a[7],rudder:a[8],sheet:a[9],boomDraw:a[10],sailSide:a[11],capsized:!!a[12],cap:d.s[1]||null,
+    F:{awa:a[13],aws:a[14],alpha:a[15],boom:a[16],lee:a[17],drive:a[18],side:a[19]}};
+  const rs=ai.rs,q=d.rs,wasFin=rs.finished;
+  rs.next=q[0];rs.started=!!q[1];rs.ocs=!!q[2];rs.finished=!!q[3];rs.finishT=q[4];rs.pen=q[5];rs.startLate=q[6];
+  if(rs.finished&&!wasFin&&S.mode==="race")toast(ai.name+" has finished","");
+}
+// glide a remote boat towards where it was last reported, carried forward at its own speed
+function stepNetBoat(ai,dt){
+  const t=ai.tgt,b=ai.b;if(!t)return;
+  const fx=Math.sin(t.h),fy=-Math.cos(t.h),rx=Math.cos(t.h),ry=Math.sin(t.h);
+  if(!t.capsized){t.x+=(t.u*fx+t.v*rx)*dt;t.y+=(t.u*fy+t.v*ry)*dt;}
+  if(Math.hypot(t.x-b.x,t.y-b.y)>160){b.x=t.x;b.y=t.y;b.h=t.h;}
+  const k=1-Math.exp(-7*dt),L=(a,c)=>a+(c-a)*k;
+  b.x=L(b.x,t.x);b.y=L(b.y,t.y);b.h=wrap(b.h+wrap(t.h-b.h)*k);
+  b.heel=L(b.heel,t.heel);b.crew=L(b.crew,t.crew);b.rudder=L(b.rudder,t.rudder);b.sheet=L(b.sheet,t.sheet);b.boomDraw=L(b.boomDraw,t.boomDraw);
+  b.u=t.u;b.v=t.v;b.hv=t.hv;b.sailSide=t.sailSide;
+  if(t.capsized&&!b.capsized){b.capsized=true;}else if(!t.capsized)b.capsized=false;
+  b.cap=t.cap;
+  ai.F=t.F;
+}
+// ---- wind, for the players who aren't hosting: follow the host's ----
+function netWind(dt){
+  const w=NET.wind;if(!w)return;
+  S.wind.from=wrap(S.wind.from+wrap(w.from-S.wind.from)*Math.min(1,dt*4));
+  S.wind.speed+=(w.speed-S.wind.speed)*Math.min(1,dt*4);
+  S.wind.base=w.base;S.shift=w.shift;
+  const f=S.wind.from,tx=-Math.sin(f),ty=Math.cos(f);
+  for(const g of S.gusts){g.x+=tx*S.wind.speed*0.6*dt;g.y+=ty*S.wind.speed*0.6*dt;}
+}
+function netSnap(d){
+  if(S.mode!=="race"||!NET.started)return;
+  NET.wind={from:d.w[0],speed:d.w[1],base:d.w[2],shift:d.w[3]};
+  if(!NET.gotWind){S.wind.from=d.w[0];S.wind.speed=d.w[1];NET.gotWind=true;}
+  S.gusts=[];for(let i=0;i+3<d.g.length;i+=4)S.gusts.push({x:d.g[i],y:d.g[i+1],r:d.g[i+2],s:d.g[i+3]});
+  // keep our clock on the host's (it sets the start gun)
+  const lag=0.05,diff=d.T+lag-S.t;
+  if(Math.abs(diff)>1)S.t+=diff;else S.t+=diff*0.1;
+  for(const e of d.b){if(e.id===NET.me)continue;const a=S.ais.find(q=>q.id===e.id);if(a)netTake(a,e);}
+}
+function netTick(dt){
+  if(!NET.started||S.mode!=="race"||S.replay)return;
+  if((NET.sendT+=dt)>=1/15){
+    NET.sendT=0;
+    if(NET.role==="host"){
+      const g=[];for(const q of S.gusts)g.push(Math.round(q.x),Math.round(q.y),Math.round(q.r),r2(q.s));
+      netBroadcast({t:"s",T:r2(S.t),w:[r2(S.wind.from),r2(S.wind.speed),r2(S.wind.base),r2(S.shift||0)],g,
+        b:[{id:"host",s:netPackBoat(S.boat,S.F),rs:netPackRs(S.race)},...S.ais.map(a=>({id:a.id,s:netPackBoat(a.b,a.F),rs:netPackRs(a.rs)}))]});
+    }else if(NET.host&&NET.host.open)try{NET.host.send({t:"b",s:netPackBoat(S.boat,S.F),rs:netPackRs(S.race)});}catch(e){}
+  }
+  // results fill in live while the table is open
+  if(finishOpen()&&(NET.resT+=dt)>0.5){NET.resT=0;renderResults();}
+}
+// Browsers stop drawing hidden tabs. If the host switches away, keep the race running (and the updates
+// going out) on a timer instead, so nobody else's race freezes. Timers in hidden tabs run about once a second.
+let netBgLast=0,netBgTimer=null;
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden&&NET.role==="host"&&NET.started){
+    netBgLast=performance.now();
+    netBgTimer=setInterval(()=>{
+      if(!document.hidden||!NET.started||S.mode!=="race"){clearInterval(netBgTimer);netBgTimer=null;return;}
+      const now=performance.now(),dt=Math.min(2,(now-netBgLast)/1000);netBgLast=now;
+      const n=Math.ceil(dt*60);for(let i=0;i<n;i++)step(dt/n);
+      NET.sendT=1;netTick(0);
+    },250);
+  }else if(netBgTimer){clearInterval(netBgTimer);netBgTimer=null;}
+});
 // ---- right of way ----
 // Port tack gives way to starboard tack. On the same tack, the windward boat (further upwind) keeps clear.
 const tackOf=b=>wrap(S.wind.from-b.h)>=0?"starboard":"port";
@@ -1718,9 +2102,14 @@ function boatEncounters(dt){
       const nx=dx/(d||1),ny=dy/(d||1),push=(30-d)/2;
       A.b.x-=nx*push;A.b.y-=ny*push;B.b.x+=nx*push;B.b.y+=ny*push;A.b.u*=0.6;B.b.u*=0.6;
       const key=A.name+B.name;S.fouls=S.fouls||{};
-      if(S.race.stage==="racing"&&(A.me||B.me)&&(!S.fouls[key]||S.t-S.fouls[key]>4)){
-        S.fouls[key]=S.t;giver.rs.pen+=10;sfx.thud();
-        if(giver.me)toast("Foul! "+row.why[0].toUpperCase()+row.why.slice(1)+". +10 s","bad");
+      const human=x=>x.me||(x.ai&&x.ai.human);
+      if(S.race.stage==="racing"&&(human(A)||human(B))&&!(NET.started&&NET.role==="client")&&(!S.fouls[key]||S.t-S.fouls[key]>4)){
+        // (online, the host judges every foul and tells the players involved)
+        S.fouls[key]=S.t;sfx.thud();
+        const why=row.why[0].toUpperCase()+row.why.slice(1),gName=giver.me?netMyName():giver.name;
+        if(giver.ai&&giver.ai.human)netSendTo(giver.ai.id,{t:"foul",pen:10,msg:"Foul! "+why+". +10 s"});else giver.rs.pen+=10;
+        if(stander.ai&&stander.ai.human)netSendTo(stander.ai.id,{t:"toast",msg:gName+" fouled you and takes a 10 s penalty",c:"good"});
+        if(giver.me)toast("Foul! "+why+". +10 s","bad");
         else if(stander.me)toast(giver.name+" fouled you and takes a 10 s penalty","good");
       }
     }
@@ -3420,7 +3809,8 @@ function frame(now){
     if(slowT>3&&GQ>-1){gqFail[GQ]=(gqFail[GQ]||0)+1;setGQ(GQ-1);slowT=0;fastT=0;}
     else if(fastT>15&&GQ<2&&(gqFail[GQ+1]||0)<2){setGQ(GQ+1);fastT=0;}
   }
-  const live=S.mode!=="menu"&&!S.paused&&!(S.race&&S.race.stage==="done");
+  // (an online race never stops: pausing or finishing only shows the overlay, and the race carries on)
+  const live=S.mode!=="menu"&&(NET.started&&S.mode==="race"?!S.replay:!S.paused&&!(S.race&&S.race.stage==="done"));
   // physics: advance by exactly the time since the last frame, in equal sub-steps of at most 1/120 s,
   // so every frame moves things by the right amount (a fixed step with a carried-over remainder made
   // some frames take one step and others two or three, which looked jittery)
@@ -3463,6 +3853,7 @@ function frame(now){
     capCall();
     if(hudT>0.08){hudT=0;updateHUD();drawDial();if(S.mode==="race")drawMinimap();}
   }
+  if(NET.peer)netTick(dt);
   requestAnimationFrame(frame);
 }
 // how close the camera is: + and − change it, remembered between visits
