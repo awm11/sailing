@@ -57,8 +57,6 @@ body{background:var(--sea-deep);color:var(--ink);font-family:var(--body);font-si
 body.lessonOn #toasts{top:auto;bottom:38%}
 body.lessonOn #side,body.lessonOn #tipPanel{visibility:hidden!important}
 @media (prefers-reduced-motion:reduce){#lsRing{animation:none}}
-#perf{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:30;pointer-events:none;
-  font:500 11px var(--mono);color:var(--ink);background:var(--panel);border:1px solid var(--panel-line);border-radius:6px;padding:3px 8px;white-space:nowrap}
 #light{position:fixed;inset:0;pointer-events:none;
   background:radial-gradient(ellipse 85% 75% at 10% -15%,rgba(255,226,168,0.20),rgba(255,226,168,0.06) 45%,rgba(255,226,168,0) 75%),
              radial-gradient(ellipse 75% 70% at 50% 50%,rgba(0,10,18,0) 55%,rgba(0,10,18,0.5) 100%);
@@ -247,7 +245,6 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 
 <canvas id="sea" tabindex="0" aria-label="Sailing game view"></canvas>
 <div id="light" aria-hidden="true"></div>
-<div id="perf" hidden></div>
 <div id="replayBar" hidden role="group" aria-label="Race replay">
   <span class="rTag">Replay</span>
   <button id="rpPlay" title="Play / pause (Space)">❚❚</button>
@@ -368,8 +365,6 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
       <span><kbd>N</kbd></span><span>Sound on / off</span>
       <span><kbd>H</kbd></span><span>Coaching tips on / off</span>
       <span><kbd>+</kbd> <kbd>−</kbd></span><span>Zoom in / out</span>
-      <span><kbd>F</kbd></span><span>Show frame rate</span>
-      <span><kbd>B</kbd></span><span>Graphics benchmark (about 25 seconds)</span>
       <span><kbd>R</kbd></span><span>Restart this mode</span>
       <span><kbd>M</kbd></span><span>Back to menu</span>
     </div>
@@ -641,7 +636,7 @@ function startMode(mode){
   if(S.replay)endReplay(false);
   if(S.lesson)endLesson();
   setTimeout(warmPolar,0);
-  S.mode=mode;S.paused=false;S.t=0;S.lastLee=null;S.trail=[];S.hitCd=0;S.auto=false;S.fx=[];S.ais=[];S.rowTip=null;
+  S.mode=mode;S.paused=false;S.t=0;S.pilot=null;S.lastLee=null;S.trail=[];S.hitCd=0;S.auto=false;S.fx=[];S.ais=[];S.rowTip=null;
   K.capsize=LV().capsize;
   if(mode==="open"){
     S.wind.base=0.6;S.wind.from=0.6;S.wind.speed=LV().start;
@@ -657,6 +652,8 @@ function startMode(mode){
     S.obstacles=raceObstacles();
     S.race={stage:"pre",gun:COUNTDOWN,signals:[10,5,4,3,2,1,0],time:0,...newRacerState()};
     S.ais=AI_CREW.map(makeAI);
+    // autostart: the computer sails your boat through the start until you touch a control
+    S.pilot={b:S.boat,rs:S.race,lineX:-80,tack:1,tackT:0,wp:0,lastNext:0,stuckT:0,unstickT:0,loiter:1,avoid:null,F:null};
   }
   S.cam.x=S.boat.x;S.cam.y=S.boat.y;
   S.lastTwa=wrap(S.wind.from-S.boat.h);
@@ -918,6 +915,7 @@ window.addEventListener("keydown",e=>{
     if(c==="ArrowUp"||c==="ArrowDown"){const i=COURSE_KEYS.indexOf(courseKey)+(c==="ArrowDown"?1:-1);pickCourse(COURSE_KEYS[(i+COURSE_KEYS.length)%COURSE_KEYS.length]);}
     return;
   }
+  if(S.pilot&&!S.paused&&!finishOpen()&&(Object.values(MAP).some(a=>a.includes(c))||c==="KeyT"))takeOver();
   if(S.replay){
     if(c==="Space"||c==="KeyP"){e.preventDefault();replayToggle();return;}
     if(c==="Escape"||c==="KeyV"){endReplay(true);return;}
@@ -925,7 +923,7 @@ window.addEventListener("keydown",e=>{
     if(c==="ArrowRight"){replaySeekBy(5);return;}
     if(c==="Tab"){e.preventDefault();replayFollow();return;}
     if(c==="KeyR"||c==="KeyM")endReplay(false);
-    else if(!["Equal","NumpadAdd","Minus","NumpadSubtract","KeyN","KeyF"].includes(c))return;
+    else if(!["Equal","NumpadAdd","Minus","NumpadSubtract","KeyN"].includes(c))return;
   }else if(c==="KeyV"&&finishOpen()){startReplay();return;}
   if(c==="KeyP"||c==="Escape"){if(!finishOpen())togglePause();}
   else if(c==="Enter"&&S.lesson&&(LESSON[S.lesson.i].next||S.lesson.done)){e.preventDefault();lessonGo(S.lesson.i+1);}
@@ -936,8 +934,6 @@ window.addEventListener("keydown",e=>{
   else if(c==="KeyN"){Snd.on=!Snd.on;try{localStorage.setItem("closeHauledSound",Snd.on?"1":"0");}catch(e){}toast(Snd.on?"Sound on":"Sound off","");}
   else if(c==="Equal"||c==="NumpadAdd")setZoom(ZOOM.k*1.15);
   else if(c==="Minus"||c==="NumpadSubtract")setZoom(ZOOM.k/1.15);
-  else if(c==="KeyF"){$("perf").hidden=!$("perf").hidden;$("perf").style.whiteSpace="";}
-  else if(c==="KeyB"&&S.mode!=="menu"&&!bench)startBench();
   else if(c==="KeyH"){S.tips=!S.tips;document.getElementById("tipPanel").style.visibility=S.tips?"visible":"hidden";}
 });
 window.addEventListener("keyup",e=>keys.delete(e.code));
@@ -948,6 +944,7 @@ window.addEventListener("wheel",e=>{
   if(S.mode==="menu"||S.paused||finishOpen()||S.replay)return;
   e.preventDefault();
   const b=S.boat;if(!b||b.capsized)return;
+  takeOver();
   let k=e.deltaMode===1?16:e.deltaMode===2?400:1;
   const fx=-e.deltaX*k,fy=-e.deltaY*k;                      // finger movement on screen (y down)
   const across=fx*Math.cos(b.h)+fy*Math.sin(b.h);           // component towards starboard
@@ -958,7 +955,7 @@ window.addEventListener("wheel",e=>{
 window.addEventListener("blur",()=>{keys.clear();touchHeld.clear();});
 document.querySelectorAll("#touch button").forEach(btn=>{
   const k=btn.dataset.k;
-  const on=e=>{e.preventDefault();touchHeld.add(k);btn.classList.add("on");};
+  const on=e=>{e.preventDefault();touchHeld.add(k);btn.classList.add("on");takeOver();};
   const off=e=>{e.preventDefault();touchHeld.delete(k);btn.classList.remove("on");};
   btn.addEventListener("pointerdown",on);btn.addEventListener("pointerup",off);
   btn.addEventListener("pointercancel",off);btn.addEventListener("pointerleave",off);
@@ -1078,12 +1075,15 @@ function step(dt){
   // in the lesson, until balancing has been taught, the sailor keeps the boat flat by themselves
   // (heeling makes a boat turn into the wind, which would fight a beginner's steering)
   if(S.lesson&&S.lesson.i<LESSON_BAL&&S.F)b.crew=approach(b.crew,clamp(-K.heelWind*S.F.side/K.crew-b.heel*1.6,-1,1),1.2*dt);
+  if(S.pilot)aiControls(S.pilot,dt);                 // autostart: the computer sails until you take over
+  else{
   if(held("leanL"))b.crew=Math.max(-1,b.crew-1.4*dt);
   if(held("leanR"))b.crew=Math.min(1,b.crew+1.4*dt);
   const target=(held("right")?1:0)-(held("left")?1:0);
   b.rudder=approach(b.rudder,target,(target?2.2:2.6)*dt);
   if(held("in")){b.sheet-=0.9*dt;S.auto=false;}
   if(held("out")){b.sheet+=0.9*dt;S.auto=false;}
+  }
   const w=windAt(b.x,b.y);
   let F=sailForces(b,w.speed,w.from);
   if(S.auto){
@@ -1107,7 +1107,10 @@ function step(dt){
   S.F=F;
   // boom swings across through the centreline on a tack or gybe
   b.boomDraw=approach(b.boomDraw,F.boom*F.lee,(Math.sign(b.boomDraw)!==F.lee&&Math.abs(F.awa)>Math.PI/2?11:4.5)*dt);   // a gybing boom slams across
-  if(stepHeel(b,F,dt)){capsize(b);return;}
+  if(stepHeel(b,F,dt)){
+    if(S.pilot){b.heel=Math.sign(b.heel)*0.62;b.hv=0;}      // while autostart sails, like the computer boats, she never quite goes over
+    else{capsize(b);return;}
+  }
 
   // wind shift announcements: lift = wind moved aft (you can point higher), header = moved towards the bow
   if(S.ws){
@@ -1425,6 +1428,11 @@ function syncReplayBar(){
 function replayToggle(){const P=S.replay;if(!P)return;if(!P.playing&&P.t>=P.t1-0.01){P.t=P.t0;seekReplay(P.t,true);}P.playing=!P.playing;syncReplayBar();}
 function replayFollow(){const P=S.replay;if(!P)return;P.follow=(P.follow+1)%(S.ais.length+1);syncReplayBar();}
 function replaySeekBy(d){const P=S.replay;if(!P)return;P.t=clamp(P.t+d,P.t0,P.t1);seekReplay(P.t,true);syncReplayBar();}
+function takeOver(){
+  if(!S.pilot)return;
+  S.pilot=null;
+  if(S.mode==="race"&&!S.replay)toast("You have control","good");
+}
 function finishRace(){
   const r=S.race;
   r.finishT=r.time+r.pen;
@@ -1497,7 +1505,9 @@ function detour(b,tgt,list){
   const cost=p=>Math.hypot(p.x-b.x,p.y-b.y)+Math.hypot(tgt.x-p.x,tgt.y-p.y);
   return cost(p1)<=cost(p2)?p1:p2;
 }
-function stepAI(ai,dt){
+// The computer sailor's hands: works out where to go and sets rudder, sail and crew. Used by the rival boats,
+// and by autostart to sail your boat until you touch a control.
+function aiControls(ai,dt){
   const b=ai.b,rs=ai.rs,gun=S.race.gun,tl=gun-S.t,wf=S.wind.from,CH=0.8;
   if(rs.next!==ai.lastNext){ai.wp=0;ai.lastNext=rs.next;}
   // ---- where to go ----
@@ -1523,9 +1533,9 @@ function stepAI(ai,dt){
     }else t={x:ai.lineX,y:-250};
     tgt=fromWF(t.x,t.y);
   }else if(rs.next<MARKS.length){
-    const m=MARKS[rs.next],aIn=m.gate+0.95,aOut=m.gate-0.95;
-    const wA={x:m.x+Math.cos(aIn)*58,y:m.y+Math.sin(aIn)*58},wB={x:m.x+Math.cos(aOut)*58,y:m.y+Math.sin(aOut)*58};
-    if(ai.wp===0&&Math.hypot(b.x-wA.x,b.y-wA.y)<45)ai.wp=1;
+    const m=MARKS[rs.next],aIn=m.gate+0.95,aOut=m.gate-0.95,mr=ai===S.pilot?72:58;   // autostart gives the mark more room
+    const wA={x:m.x+Math.cos(aIn)*mr,y:m.y+Math.sin(aIn)*mr},wB={x:m.x+Math.cos(aOut)*mr,y:m.y+Math.sin(aOut)*mr};
+    if(ai.wp===0&&Math.hypot(b.x-wA.x,b.y-wA.y)<(ai===S.pilot?55:45))ai.wp=1;
     tgt=ai.wp?wB:wA;
   }else{const q=toWF(b.x,b.y);
     tgt=q.y<LINE.y-2?fromWF(clamp(q.x,-180,180),150):fromWF(clamp(ai.lineX*0.6,-150,150),-250);}    // (missed the line: come back below it)
@@ -1547,9 +1557,52 @@ function stepAI(ai,dt){
     const rw=wrap(want-wf);if(Math.abs(rw)<CH)want=wf+(rw>=0?CH:-CH);}
   // steer clear of rocks, the island, moored boats and marks that are dead ahead
   const fx=Math.sin(b.h),fy=-Math.cos(b.h),rx=Math.cos(b.h),ry=Math.sin(b.h);
+  const me=ai===S.pilot,look=me?130:70,side=me?34:22;   // autostart looks further ahead and gives more room
   for(const o of obs){
-    const dx=o.x-b.x,dy=o.y-b.y,fwd=dx*fx+dy*fy;if(fwd<0||fwd>o.r+70)continue;
-    const lat=dx*rx+dy*ry;if(Math.abs(lat)<o.r+22){want=b.h-(lat>=0?1:-1)*0.7;break;}
+    const dx=o.x-b.x,dy=o.y-b.y,fwd=dx*fx+dy*fy;if(fwd<0||fwd>o.r+look)continue;
+    const lat=dx*rx+dy*ry;if(Math.abs(lat)<o.r+side){
+      want=b.h-(lat>=0?1:-1)*(me?0.9:0.7);
+      // autostart beating upwind towards a rock: turning away would point into the wind, so tack instead
+      if(me&&o.kind!=="boat"&&Math.abs(wrap(want-wf))<CH&&ai.tackT>2){ai.tack=-ai.tack;ai.tackT=0;want=wf+ai.tack*CH;}
+      break;
+    }
+  }
+  // autostart keeps clear of other boats whoever has right of way: look a few seconds ahead at where each
+  // nearby boat will be, and if we'd pass too close, aim behind it (or turn away if it's coming at us),
+  // and spill wind to slow down if it's getting tight
+  if(me){
+    const vx=b.u*fx+b.v*rx,vy=b.u*fy+b.v*ry;let worst=null,wd=1e9;
+    for(const o of S.ais){
+      const c=o.b,cfx=Math.sin(c.h),cfy=-Math.cos(c.h),cvx=c.u*cfx+c.v*Math.cos(c.h),cvy=c.u*cfy+c.v*Math.sin(c.h);
+      const px=c.x-b.x,py=c.y-b.y;if(px*px+py*py>260*260)continue;
+      const rvx=cvx-vx,rvy=cvy-vy,rv2=rvx*rvx+rvy*rvy;
+      const tc=clamp(rv2>1?-(px*rvx+py*rvy)/rv2:0,0,4),cx=px+rvx*tc,cy=py+rvy*tc,cpa=Math.hypot(cx,cy);
+      const dist=Math.hypot(px,py);
+      if((cpa<62&&tc<4)||dist<44){const score=Math.min(cpa+tc*12,dist);if(score<wd){wd=score;worst={c,tc,cpa,px,py,dist};}}
+    }
+    if(worst){
+      const c=worst.c,ahead=worst.px*fx+worst.py*fy,lat=worst.px*rx+worst.py*ry,opp=Math.abs(wrap(c.h-b.h))>2;
+      const back=50+Math.max(0,c.u)*1.4,away=lat>=0?-1:1;
+      if(worst.dist<44){
+        // touching or about to: turn straight away from it and push off
+        want=bearing(b,{x:b.x-worst.px,y:b.y-worst.py});
+        if(worst.dist<36){b.x-=worst.px/worst.dist*20*dt;b.y-=worst.py/worst.dist*20*dt;}
+      }
+      else if(opp)want=b.h+(Math.abs(lat)<12?1:away)*0.8;                                // meeting head on: both turn aside
+      else if(ahead>-10)want=bearing(b,{x:c.x-Math.sin(c.h)*back,y:c.y+Math.cos(c.h)*back});   // crossing: pass behind it
+      else want=b.h+away*0.6;                                                            // it's behind us: edge away
+      if(Math.abs(wrap(want-b.h))>1.2&&worst.dist<120&&worst.dist>=44)want=b.h+away*0.9;
+      const rw=wrap(want-wf);if(Math.abs(rw)<CH-0.1)want=wf+(rw>=0?CH-0.1:-(CH-0.1));
+      if(worst.tc<2.2&&worst.cpa<45)slow=true;
+    }
+    // ...but never dodge a boat into a rock: obstacles dead ahead win
+    const hx=Math.sin(want),hy=-Math.cos(want),hrx=Math.cos(want),hry=Math.sin(want);
+    for(const o of obs){
+      if(o.kind==="boat")continue;
+      const dx=o.x-b.x,dy=o.y-b.y,fwd=dx*hx+dy*hy;if(fwd<0||fwd>o.r+look)continue;
+      const lat=dx*hrx+dy*hry;if(Math.abs(lat)<o.r+side){want=want-(lat>=0?1:-1)*0.9;
+        if(Math.abs(wrap(want-wf))<CH)want=wf+(wrap(want-wf)>=0?CH:-CH);break;}
+    }
   }
   if(ai.gybeT>2)want=wf+Math.PI;                       // bear away through dead downwind first
   // unstick: if stopped for a while (in irons, or nosed into something), bear away onto a reach
@@ -1566,17 +1619,29 @@ function stepAI(ai,dt){
   // ---- sail and balance ----
   const w=windAt(b.x,b.y);
   let F=sailForces(b,w.speed,w.from);
-  const tgtSheet=bestBoom(Math.abs(F.awa))+(slow?0.55:0)+(Math.abs(b.heel)>0.38?0.3:0);
-  b.sheet=clamp(approach(b.sheet,tgtSheet,1.4*dt),K.sheetMin,K.sheetMax);
+  let tgtSheet=bestBoom(Math.abs(F.awa))+(slow?0.55:0)+(Math.abs(b.heel)>0.38?0.3:0),rate=1.4;
+  if(ai===S.pilot){
+    // your boat can capsize (the computer boats can't), so autostart spills wind early and fast when she heels
+    const over=clamp((Math.abs(b.heel)-0.3)*4,0,0.9);
+    ai.ease=approach(ai.ease||0,over,(over>(ai.ease||0)?5:0.35)*dt);
+    tgtSheet=bestBoom(Math.abs(F.awa))+(slow?0.55:0)+ai.ease;rate=1.4+4*over;
+  }
+  // (autostart sheets in gently, so the boat can be balanced as the power comes on, and lets out fast)
+  b.sheet=clamp(approach(b.sheet,tgtSheet,(ai===S.pilot&&tgtSheet<b.sheet?Math.min(rate,0.6):rate)*dt),K.sheetMin,K.sheetMax);
   // Crew position: where the sail's heeling push would be balanced, plus a little correction for any heel
   // left over, smoothed over a second or so. Like a real sailor they hold their spot and only shift when
   // it is clearly wrong, instead of hunting in and out all the time.
   const crewWant=clamp(-K.heelWind*F.side/K.crew-b.heel*1.6,-1,1);
   ai.crewTgt=ai.crewTgt??b.crew;ai.crewTgt+=(crewWant-ai.crewTgt)*(1-Math.exp(-dt/0.7));
+  if(ai===S.pilot){b.crew=approach(b.crew,clamp(crewWant-b.heel*2.5,-1,1),2.5*dt);return w;}
   const off=ai.crewTgt-b.crew;
   if(Math.abs(off)>0.07)ai.shifting=true;else if(Math.abs(off)<0.015)ai.shifting=false;
   if(ai.shifting)b.crew=approach(b.crew,ai.crewTgt,1.2*dt);
-  F=sailForces(b,w.speed,w.from);F.fu*=ai.skill;
+  return w;
+}
+function stepAI(ai,dt){
+  const b=ai.b,rs=ai.rs,w=aiControls(ai,dt);
+  const F=sailForces(b,w.speed,w.from);F.fu*=ai.skill;
   const px=b.x,py=b.y;
   integrate(b,F,dt);
   const kelp=kelpAt(b.x,b.y);if(kelp>0){b.u-=b.u*0.9*kelp*dt;b.v-=b.v*0.9*kelp*dt;}
@@ -1628,10 +1693,11 @@ function closing(A,B){
   const cx=dx+vx*t,cy=dy+vy*t,cpa=Math.hypot(cx,cy);
   return cpa<42?{t,cpa}:null;
 }
-S.racers=()=>[{b:S.boat,rs:S.race,me:true,name:"You"},...S.ais.map(a=>({b:a.b,rs:a.rs,ai:a,name:a.name}))];
+S.racers=()=>[{b:S.boat,rs:S.race,me:true,name:"You",ai:S.pilot||undefined},...S.ais.map(a=>({b:a.b,rs:a.rs,ai:a,name:a.name}))];
 function boatEncounters(dt){
   const racers=S.racers();
   for(const a of S.ais)a.avoid=null;
+  if(S.pilot)S.pilot.avoid=null;
   S.rowTip=null;
   for(let i=0;i<racers.length;i++)for(let j=i+1;j<racers.length;j++){
     const A=racers[i],B=racers[j];
@@ -1691,7 +1757,7 @@ let W=0,H=0,DPR=1;
 // -1 = plainest at 1.25×.  EQ is the effects level that goes with it (2 full, 1 fewer, 0 plain).
 let GQ=2,EQ=2,slowT=0,fastT=0,warmT=0;const gqFail={};
 function setGQ(q){GQ=q;EQ=q>=1?2:q===0?1:0;resize();}
-// Feature switches, used by the benchmark (B) to measure what each part of the picture costs
+// Feature switches for each part of the picture (all on)
 const FX={depth:1,chop:1,gusts:1,streaks:1,crests:1,glitter:1,shallows:1,kelp:1,wakes:1,scene:1,light:1};
 function resize(){DPR=Math.min([1.25,1.5,1.5,2][GQ+1],window.devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);}
 window.addEventListener("resize",resize);resize();
@@ -3050,6 +3116,19 @@ function drawEdgeArrow(){
   ctx.restore();
 }
 
+// autostart label, just under your boat
+function drawPilotTag(){
+  if(!S.pilot||S.mode!=="race"||S.replay)return;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  const x=W/2+(S.boat.x-S.cam.x)*S.zoom,y=H/2+(S.boat.y-S.cam.y)*S.zoom+46*S.zoom+18;
+  const a=0.75+0.25*Math.sin(S.t*3);
+  ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.shadowColor="rgba(2,16,22,0.9)";ctx.shadowBlur=5;
+  ctx.font="700 10px 'JetBrains Mono',monospace";if("letterSpacing" in ctx)ctx.letterSpacing="1.5px";
+  ctx.fillStyle="rgba(255,212,71,"+a.toFixed(2)+")";ctx.fillText("AUTOSTART",x,y);
+  if("letterSpacing" in ctx)ctx.letterSpacing="0px";
+  ctx.font="500 11px 'JetBrains Mono',monospace";ctx.fillStyle="#eef6f3";ctx.fillText("press any control to take over",x,y+14);
+  ctx.restore();
+}
 // big countdown numbers for the last ten seconds before the start, then GO
 function drawCountdown(){
   if(S.mode!=="race")return;
@@ -3334,8 +3413,7 @@ function frame(now){
   // frames slower than ~40 fps for a couple of seconds: step the graphics down a level
   // (very long gaps are a hidden tab or a pause in the browser, not slow drawing)
   // (ignores the first few seconds, while fonts load and the page settles)
-  if(bench)benchFrame(raw);
-  else if(raw<0.5&&(warmT+=raw)>4){
+  if(raw<0.5&&(warmT+=raw)>4){
     if(raw>0.0182)slowT+=raw;else slowT=Math.max(0,slowT-raw*0.5);    // slower than ~55 fps
     fastT=raw<0.0175?fastT+raw:0;
     // a level that has proved too slow twice is not tried again, so quality doesn't keep flipping
@@ -3378,63 +3456,18 @@ function frame(now){
     drawLessonMark();
     drawFx("drop");
     drawEdgeArrow();
+    drawPilotTag();
     drawCountdown();
     hudT+=dt;
     placeLessonRing();
     capCall();
     if(hudT>0.08){hudT=0;updateHUD();drawDial();if(S.mode==="race")drawMinimap();}
   }
-  // frame-rate readout (F)
-  perf.n++;perf.ms+=performance.now()-t0;perf.t+=raw;
-  if(perf.t>=0.5){if(!$("perf").hidden&&!bench&&$("perf").style.whiteSpace!=="pre")$("perf").textContent=Math.round(perf.n/perf.t)+" fps · drawing "+(perf.ms/perf.n).toFixed(1)+" ms · quality "+["plain","medium","full","full"][GQ+1]+" · "+DPR+"×";perf.n=0;perf.ms=0;perf.t=0;}
   requestAnimationFrame(frame);
 }
-const perf={n:0,ms:0,t:0};
 // how close the camera is: + and − change it, remembered between visits
 const ZOOM={k:1.3};try{const z=parseFloat(localStorage.getItem("closeHauledZoom"));if(z>0)ZOOM.k=z;}catch(e){}
 function setZoom(k){ZOOM.k=clamp(k,0.7,2.2);try{localStorage.setItem("closeHauledZoom",String(ZOOM.k));}catch(e){}toast("Zoom "+Math.round(ZOOM.k/1.3*100)+"%","");}
-// Benchmark (B): freezes the game, then turns each part of the picture off in turn for a moment and
-// measures the frame rate, so the costly parts on this computer show up. Results stay on screen.
-let bench=null;
-const BENCH=[["everything on",{}],["no deep/shallow patches",{depth:0}],["no ripple texture",{chop:0}],["no gust patches",{gusts:0}],
-  ["no wind streaks",{streaks:0}],["no wave crests",{crests:0}],["no sun glitter",{glitter:0}],["no shallows/surf",{shallows:0}],
-  ["no seaweed",{kelp:0}],["no wakes",{wakes:0}],["no boats/rocks/buoys",{scene:0}],
-  ["bare sea only",{depth:0,chop:0,gusts:0,streaks:0,crests:0,glitter:0,shallows:0,kelp:0,wakes:0,scene:0,light:0}],["everything at 1.5×",{dpr:1.5}],["everything at 1×",{dpr:1}]];
-// name of the graphics chip the browser reports (shows whether drawing is hardware-accelerated)
-function gpuName(){
-  try{const g=document.createElement("canvas").getContext("webgl");if(!g)return "no WebGL (likely software drawing)";
-    const e=g.getExtension("WEBGL_debug_renderer_info");return String(e?g.getParameter(e.UNMASKED_RENDERER_WEBGL):g.getParameter(g.RENDERER)).slice(0,60);}
-  catch(e){return "unknown";}
-}
-function startBench(){
-  bench={i:-1,t:0,n:0,res:[],GQ,paused:S.paused};
-  S.paused=true;show("pause",false);setGQ(2);
-  $("perf").hidden=false;$("perf").style.whiteSpace="pre";$("perf").textContent="Benchmark running…";
-  benchNext();
-}
-function benchApply(cfg){
-  for(const k in FX)FX[k]=k in cfg?cfg[k]:1;
-  $("light").hidden=!FX.light;
-  const want=Math.min(cfg.dpr||2,window.devicePixelRatio||1);
-  if(DPR!==want){DPR=want;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);}
-}
-function benchNext(){
-  bench.i++;bench.t=0;bench.n=0;
-  if(bench.i>=BENCH.length){
-    benchApply({});setGQ(bench.GQ);S.paused=bench.paused;show("pause",S.paused);
-    const base=bench.res[0][1];
-    $("perf").textContent="Benchmark ("+Math.round(W)+"×"+Math.round(H)+", screen "+(window.devicePixelRatio||1)+"×)\nGraphics: "+gpuName()+"\n"+
-      bench.res.map(([n,f])=>(n+"").padEnd(26)+String(Math.round(f)).padStart(4)+" fps"+(n===BENCH[0][0]?"":"  ("+(f>=base?"+":"")+Math.round(f-base)+")")).join("\n")+"\nPress F to hide";
-    bench=null;slowT=0;fastT=0;return;
-  }
-  benchApply(BENCH[bench.i][1]);
-}
-function benchFrame(raw){
-  bench.t+=raw;
-  if(bench.t>0.4){bench.n++;bench.acc=(bench.acc||0)+raw;}        // skip the first moment after a switch
-  if(bench.t>2.1){bench.res.push([BENCH[bench.i][0],bench.n/(bench.acc||1)]);bench.acc=0;
-    $("perf").textContent="Benchmark running… "+(bench.i+1)+" / "+BENCH.length;benchNext();}
-}
 // menu backdrop: drifting water with gusts
 S.mode="menu";S.cam={x:0,y:0};initGusts();
 requestAnimationFrame(frame);
