@@ -152,7 +152,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 .brand span{color:var(--signal)}
 .lede{font-size:17px;max-width:58ch;color:var(--ink);margin:14px 0 22px;opacity:.92}
 .modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
-.mode{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:start;padding:16px 18px;border-radius:12px;background:var(--panel);border:1px solid var(--panel-line);transition:border-color .15s,transform .15s}
+.mode{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:1fr;align-content:start;gap:4px 14px;align-items:start;padding:16px 18px;border-radius:12px;background:var(--panel);border:1px solid var(--panel-line);transition:border-color .15s,transform .15s}
 .mode:hover,.mode:focus-visible{border-color:var(--mark);transform:translateY(-2px)}
 .mode .k{grid-row:1/3;font-family:var(--mono);font-weight:700;font-size:20px;width:38px;height:38px;display:grid;place-items:center;border-radius:8px;border:1.5px solid var(--panel-line);border-bottom-width:3px}
 .mode h2{margin:0;font-family:var(--display);font-weight:800;font-size:28px;text-transform:uppercase;letter-spacing:.02em;line-height:1}
@@ -191,7 +191,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 .crs canvas{width:112px;height:84px;border-radius:6px;display:block}
 .crs[aria-pressed="true"]{border-color:var(--mark);color:var(--mark);box-shadow:0 0 0 2px rgba(255,212,71,.25)}
 .crs:hover{border-color:var(--muted)}
-.menuBest{grid-column:2;display:block;margin-top:4px;font-size:13px;font-weight:700;color:var(--mark)}
+.menuBest{grid-column:1;display:block;margin-top:4px;font-size:13px;font-weight:700;color:var(--mark)}
 @media (prefers-reduced-motion:reduce){.pb,.pbMain{animation:none}}
 .card h2{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:44px;line-height:1;margin:0 0 10px}
 .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
@@ -334,8 +334,8 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
     <h1 class="brand">Close<br><span>Hauled</span></h1>
     <p class="lede">A top-down sailing dinghy driven by real sailing physics. Steer with the rudder, set the angle of the sail, and read the wind from the water around you.</p>
     <div class="modes">
-      <button class="mode" id="goLesson"><span class="k">L</span><h2>Learn to sail</h2><p>New to sailing? A guided first sail: the keys, the gauges, steering, trimming, balancing, tacking and gybing, one step at a time.</p><span class="menuBest" id="lessonTag"></span></button>
-      <button class="mode" id="goOpen"><span class="k">1</span><h2>Open water</h2><p>Free sailing in wind that shifts and changes strength, plus seven drills that teach you the points of sail.</p></button>
+      <button class="mode" id="goLesson"><h2>Learn to sail</h2><p>New to sailing? A guided first sail: the keys, the gauges, steering, trimming, balancing, tacking and gybing, one step at a time.</p><span class="menuBest" id="lessonTag"></span></button>
+      <button class="mode" id="goOpen"><h2>Open water</h2><p>Free sailing in wind that shifts and changes strength, plus seven drills that teach you the points of sail.</p></button>
     </div>
     <div class="levels">
       <span class="eyebrow">Wind</span>
@@ -350,8 +350,8 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
       <div id="crsSeg" role="group" aria-label="Race course"></div>
       <div id="crsDesc"></div>
       <div class="raceGo">
-        <button class="mode" id="goRace"><span class="k">2</span><h2>Race the computer</h2><p>Three computer boats. Time your start to the countdown, round the marks, give way when the rules say so, and finish first.</p><span class="menuBest" id="menuBest"></span></button>
-        <button class="mode" id="goNet"><span class="k">3</span><h2>Race online</h2><p>Race up to three friends live. One of you hosts and shares a four-letter code; the others join with it. Computer boats fill any empty places.</p></button>
+        <button class="mode" id="goRace"><h2>Race the computer</h2><p>Three computer boats. Time your start to the countdown, round the marks, give way when the rules say so, and finish first.</p><span class="menuBest" id="menuBest"></span></button>
+        <button class="mode" id="goNet"><h2>Race online</h2><p>Race up to three friends live. One of you hosts and shares a four-letter code; the others join with it. Computer boats fill any empty places.</p></button>
       </div>
     </section>
     <div class="primer">
