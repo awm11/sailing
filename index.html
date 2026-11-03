@@ -869,7 +869,7 @@ const LESSON=[
     goal:(L,dt)=>holdFor(L,S.trimChip==="Good"&&S.boat.u>10,3,dt)},
   {t:"Speed",hl:"#instr",x:"Bottom right is your speed, and how close it is to the best this boat could do at this angle. Fastest is usually with the wind from the side (a <b>beam reach</b>). Keep the sail in the green and hold at least <b>3.5 knots</b> for a few seconds.",
     goal:(L,dt)=>holdFor(L,S.boat.u/PX_PER_KN>=3.5,3,dt)},
-  {t:"Balance",hl:"boat",ws:170,bal:true,x:"<span class=\"lsPad\" aria-hidden=\"true\"><svg viewBox=\"0 0 96 66\" width=\"96\" height=\"66\"><rect x=\"3\" y=\"3\" width=\"90\" height=\"60\" rx=\"9\" fill=\"rgba(160,214,214,.10)\" stroke=\"rgba(160,214,214,.55)\" stroke-width=\"1.5\"/><path d=\"M14 33h68M14 33l7-5M14 33l7 5M82 33l-7-5M82 33l-7 5\" stroke=\"#ffd447\" stroke-width=\"2\" fill=\"none\" stroke-linecap=\"round\"/><g class=\"lsFingers\"><circle cx=\"42\" cy=\"22\" r=\"6.5\" fill=\"#e8bd94\" stroke=\"#5a3e2b\" stroke-width=\"1\"/><circle cx=\"54\" cy=\"25\" r=\"6.5\" fill=\"#e8bd94\" stroke=\"#5a3e2b\" stroke-width=\"1\"/></g></svg><small>two fingers</small></span><b>The wind is picking up</b>, and <b>you take over the balancing</b>: so far your sailor has been doing it for you. Lean your sailor in or out of the boat to keep it balanced. The <b>yellow chevrons</b> show which way to lean. Use two fingers on the trackpad (or <kbd>Q</kbd> / <kbd>E</kbd>). Keep her flat for 4 seconds.",
+  {t:"Balance",hl:"boat",ws:170,bal:true,x:"<span class=\"lsPad\" aria-hidden=\"true\"><svg viewBox=\"0 0 96 66\" width=\"96\" height=\"66\"><rect x=\"3\" y=\"3\" width=\"90\" height=\"60\" rx=\"9\" fill=\"rgba(160,214,214,.10)\" stroke=\"rgba(160,214,214,.55)\" stroke-width=\"1.5\"/><path d=\"M14 33h68M14 33l7-5M14 33l7 5M82 33l-7-5M82 33l-7 5\" stroke=\"#ff7ad9\" stroke-width=\"2\" fill=\"none\" stroke-linecap=\"round\"/><g class=\"lsFingers\"><circle cx=\"42\" cy=\"22\" r=\"6.5\" fill=\"#e8bd94\" stroke=\"#5a3e2b\" stroke-width=\"1\"/><circle cx=\"54\" cy=\"25\" r=\"6.5\" fill=\"#e8bd94\" stroke=\"#5a3e2b\" stroke-width=\"1\"/></g></svg><small>two fingers</small></span><b>The wind is picking up</b>, and <b>you take over the balancing</b>: so far your sailor has been doing it for you. Lean your sailor in or out of the boat to keep it balanced. The <b>pink chevrons</b> show which way to lean. Use two fingers on the trackpad (or <kbd>Q</kbd> / <kbd>E</kbd>). Keep her flat for 4 seconds.",
     goal:(L,dt)=>holdFor(L,Math.abs(S.boat.heel)<0.21&&S.boat.u>25&&L.age>2,4,dt)},
   {t:"Tacking",hl:"#dialPanel",ws:120,x:"<b>The wind has eased again</b>, to 10 knots. To get upwind you zig-zag. Steer the bow round <b>through the wind</b> (through the red zone on the dial) until the sail swaps sides. Keep the turn going so you don't stop head to wind. If you do get stuck (in irons), hold the rudder over until the bow swings away.",
     goal:(L)=>!!S.open.done.tack},
@@ -2896,7 +2896,7 @@ function sprayFrom(b,F,dt){
     S.fx.push({k:"drop",x:p.x,y:p.y,z:p.z,vx:fx*b.u*0.5+rx*sd*v*0.6+wx*30+(Math.random()-0.5)*20,vy:fy*b.u*0.5+ry*sd*v*0.6+wy*30+(Math.random()-0.5)*20,vz:45+Math.random()*45,life:1.2,spray:1});
   }
 }
-// Balance guide: when the sailor is in the wrong place for how hard the sail is pulling, a yellow arrow
+// Balance guide: when the sailor is in the wrong place for how hard the sail is pulling, a pink arrow
 // across the boat points the way to move (the way to swipe, or Q / E). It grows with more chevrons the
 // further off they are, turns red near capsizing, and fades away once the boat is balanced.
 function balanceNeed(b,F){
@@ -2912,7 +2912,7 @@ function drawBalanceGuide(){
   if(S.balA<0.02)return;
   if(show)S.balSide=Math.sign(need)||S.balSide||1;
   const sg=S.balSide,rx=Math.cos(b.h)*sg,ry=Math.sin(b.h)*sg,c=toView({x:b.x,y:b.y,z:6});
-  const danger=hd>24,col=danger?"#ff6266":"#ffd447",n=mag>0.55?3:mag>0.3?2:1;
+  const danger=hd>24,col=danger?"#ff6266":"#ff7ad9",n=mag>0.55?3:mag>0.3?2:1;
   const pulse=0.75+0.25*Math.sin(S.t*6);
   ctx.save();ctx.globalAlpha=S.balA*(danger?pulse:0.9);ctx.fillStyle=col;ctx.strokeStyle="rgba(5,27,36,0.7)";ctx.lineWidth=2;ctx.lineJoin="round";
   // chevrons marching out from the boat towards the side to move to
