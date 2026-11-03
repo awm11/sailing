@@ -181,7 +181,12 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
 @keyframes pbPop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 .confetti{position:absolute;top:-10px;width:8px;height:12px;border-radius:2px;pointer-events:none;animation:confetti linear forwards}
 @keyframes confetti{to{transform:translate(var(--dx),560px) rotate(var(--r));opacity:.2}}
-#crsSeg{display:flex;flex-wrap:wrap;gap:8px}
+#crsSeg{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#crsDesc{margin-top:8px;opacity:.9}
+.raceBox{margin-top:20px;padding:16px 18px 18px;border:1px solid var(--panel-line);border-radius:14px;background:rgba(5,27,36,.35)}
+.raceHead{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.raceHead h2{margin:0;font-family:var(--display);font-weight:800;font-size:28px;text-transform:uppercase;letter-spacing:.02em;line-height:1}
+.raceGo{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-top:14px}
 .crs{cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;padding:5px 5px 6px;border-radius:10px;border:1.5px solid var(--panel-line);background:var(--panel);color:var(--muted);font:inherit;font-weight:700;font-size:12px}
 .crs canvas{width:112px;height:84px;border-radius:6px;display:block}
 .crs[aria-pressed="true"]{border-color:var(--mark);color:var(--mark);box-shadow:0 0 0 2px rgba(255,212,71,.25)}
@@ -331,8 +336,6 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
     <div class="modes">
       <button class="mode" id="goLesson"><span class="k">L</span><h2>Learn to sail</h2><p>New to sailing? A guided first sail: the keys, the gauges, steering, trimming, balancing, tacking and gybing, one step at a time.</p><span class="menuBest" id="lessonTag"></span></button>
       <button class="mode" id="goOpen"><span class="k">1</span><h2>Open water</h2><p>Free sailing in wind that shifts and changes strength, plus seven drills that teach you the points of sail.</p></button>
-      <button class="mode" id="goRace"><span class="k">2</span><h2>Race course</h2><p>Race three other boats. Time your start to the countdown, round the marks, give way when the rules say so, and finish first. Choose a course below.</p><span class="menuBest" id="menuBest"></span></button>
-      <button class="mode" id="goNet"><span class="k">3</span><h2>Race online</h2><p>Race up to three friends live. One of you hosts and shares a four-letter code; the others join with it. Empty places are filled by computer boats.</p></button>
     </div>
     <div class="levels">
       <span class="eyebrow">Wind</span>
@@ -340,14 +343,17 @@ kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:4px;bor
         <button class="lvl" data-l="light" aria-pressed="false">Light</button><button class="lvl" data-l="moderate" aria-pressed="false">Moderate</button><button class="lvl" data-l="strong" aria-pressed="false">Strong</button><button class="lvl" data-l="gale" aria-pressed="false">Gale</button>
       </div>
       <span id="lvlDesc"></span>
-      <span class="hint"><kbd>←</kbd> <kbd>→</kbd> to change</span>
+      <span class="hint">For open water and races · <kbd>←</kbd> <kbd>→</kbd> to change</span>
     </div>
-    <div class="levels">
-      <span class="eyebrow">Course</span>
-      <div role="group" aria-label="Race course" id="crsSeg"></div>
-      <span id="crsDesc"></span>
-      <span class="hint"><kbd>↑</kbd> <kbd>↓</kbd> to change</span>
-    </div>
+    <section class="raceBox" aria-label="Race">
+      <div class="raceHead"><h2>Race</h2><span class="hint">Choose a course, then who to race · <kbd>↑</kbd> <kbd>↓</kbd> to change course</span></div>
+      <div id="crsSeg" role="group" aria-label="Race course"></div>
+      <div id="crsDesc"></div>
+      <div class="raceGo">
+        <button class="mode" id="goRace"><span class="k">2</span><h2>Race the computer</h2><p>Three computer boats. Time your start to the countdown, round the marks, give way when the rules say so, and finish first.</p><span class="menuBest" id="menuBest"></span></button>
+        <button class="mode" id="goNet"><span class="k">3</span><h2>Race online</h2><p>Race up to three friends live. One of you hosts and shares a four-letter code; the others join with it. Computer boats fill any empty places.</p></button>
+      </div>
+    </section>
     <div class="primer">
       <div><h3>The wind</h3><p>Wave crests lie across the wind and roll downwind. Darker patches are gusts. Moored boats always point into the wind.</p></div>
       <div><h3>The sail</h3><p>The sail works like a wing. Pull it in until it stops flapping, but not so far that the air stalls. The trim chip tells you which.</p></div>
